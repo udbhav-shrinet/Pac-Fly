@@ -12,7 +12,7 @@
     { name: 'Scarborough Fair', artist: 'Traditional', notes: [69,69,72,74,76,74,72,69,67,69,72,74,72,69,67].map(note => [note, 1]) },
     { name: 'Beethoven Fifth', artist: 'Beethoven', notes: [64,64,64,60,64,64,64,57,64,64,64,60,64,64,64,57].map(note => [note, .5]) }
   ];
-  const audio = { context: null, master: null, volume: .65, timer: null, note: 0, playing: false, trial: 0, epsilon: 1, q: tracks.map(item => item.notes.map(() => new Map())), dopamine: .32, punishment: 0 };
+  const audio = { context: null, master: null, volume: .65, timer: null, note: 0, playing: false, trial: 0, epsilon: .18, q: tracks.map(item => item.notes.map(() => new Map())), dopamine: .32, punishment: 0 };
   let brain = null;
   let brainBackend = 'CONNECTOME LIF';
   const brainReady = FullBrainBridge.create().then(value => {
@@ -70,7 +70,7 @@
   }
   function stopTrack() { clearInterval(audio.timer); audio.playing = false; $('play-track').textContent = '▶'; $('fly').classList.remove('performing'); $('performer-status').textContent = 'FLY IS LISTENING'; }
   function startTrack() {
-    setupAudio(); stopTrack(); audio.note = 0; audio.trial++; audio.epsilon = Math.max(.04, 1 - audio.trial / 32); audio.playing = true; $('play-track').textContent = 'Ⅱ';
+    setupAudio(); stopTrack(); audio.note = 0; audio.trial++; audio.epsilon = Math.max(.04, .18 - audio.trial * .004); audio.playing = true; $('play-track').textContent = 'Ⅱ';
     $('status-text').textContent = 'loading virtual brain...';
     brainReady.then(() => {
       if (!audio.playing) return;
@@ -91,7 +91,7 @@
       const memory = audio.q[track][audio.note % notes.length];
       const learned = memory.get(target) || 0;
       const explore = Math.random() < audio.epsilon;
-      const midi = explore ? 48 + Math.floor(Math.random() * 24) : (learned > 0 ? target : 48 + Math.floor(Math.random() * 24));
+      const midi = explore ? 48 + Math.floor(Math.random() * 24) : target;
       const correct = midi === target;
       memory.set(midi, (memory.get(midi) || 0) + (correct ? 1 : -.45));
       if (!correct && Math.random() < .55) memory.set(target, (memory.get(target) || 0) + .7);
