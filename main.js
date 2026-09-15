@@ -11,6 +11,7 @@
     onGhostCaught: () => {
       ghostRewards++;
       $('reward-flag').textContent = `GHOST REWARD · ${ghostRewards}`;
+      $('ghost-reward-inline').textContent = ghostRewards;
       engine && engine.onGhostCaught && engine.onGhostCaught();
     },
     onCaught: () => engine && engine.onCaught && engine.onCaught(),
@@ -37,6 +38,20 @@
   }
 
   const $ = id => document.getElementById(id);
+  document.querySelectorAll('.view-tab').forEach(tab => tab.addEventListener('click', () => {
+    const view = tab.dataset.view;
+    document.querySelectorAll('.view-tab').forEach(item => item.classList.toggle('active', item === tab));
+    document.querySelectorAll('.view-arena,.view-brain,.view-data').forEach(panel => panel.classList.toggle('view-active', panel.classList.contains(`view-${view}`)));
+  }));
+  document.querySelectorAll('.view-arena').forEach(panel => panel.classList.add('view-active'));
+  document.querySelectorAll('.dpad button').forEach(button => {
+    const setDirection = event => {
+      event.preventDefault();
+      if (game.humanMode) game.humanDir = button.dataset.dir;
+    };
+    button.addEventListener('pointerdown', setDirection);
+    button.addEventListener('click', setDirection);
+  });
   document.querySelectorAll('[data-tool]').forEach(button => button.addEventListener('click', () => {
     const mode = button.dataset.tool;
     game.setPlacementMode(mode);

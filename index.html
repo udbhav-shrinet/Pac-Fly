@@ -2,9 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Pac-Fly V2 | Connectome Research Console</title>
-  <meta name="description" content="A dense, connectome-driven Pac-Man research dashboard.">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#071018">
+  <title>Pac-Fly | Neural Arcade Lab</title>
+  <meta name="description" content="An interactive FlyWire-derived connectome playground.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -12,57 +13,48 @@
 </head>
 <body>
   <header class="topbar">
-    <div class="brand"><span class="brand-mark">◎</span><div><h1>PAC-FLY <b>V2</b></h1><p>CONNECTOME RESEARCH CONSOLE <i>• LIVE</i></p></div></div>
+    <div class="brand"><span class="brand-mark">◎</span><div><h1>PAC-FLY <b>LAB</b></h1><p>NEURAL ARCADE <i>• LIVE</i></p></div></div>
     <div class="top-actions"><span class="session-badge">SESSION 0042</span><button id="theme-toggle" class="icon-btn" type="button" aria-label="Switch to light mode">☼</button></div>
   </header>
 
+  <div class="mobile-tabs" role="tablist" aria-label="Lab views">
+    <button class="view-tab active" data-view="arena" type="button">◉<span>Play</span></button>
+    <button class="view-tab" data-view="brain" type="button">✦<span>Brain</span></button>
+    <button class="view-tab" data-view="data" type="button">⌁<span>Signals</span></button>
+  </div>
+
   <main class="dashboard">
-    <section class="panel experiment-panel">
-      <div class="panel-head"><div><span class="eyebrow">EXPERIMENT / 01</span><h2>Closed-loop arena</h2></div><span class="live-dot">● AUTONOMOUS</span></div>
-      <div class="arena-shell"><canvas id="arcade-canvas" role="img" aria-label="Connectome-controlled maze"></canvas><div class="arena-overlay"><span>28 × 31 GRID</span><span id="arena-mode">PREDATOR FIELD</span></div></div>
+    <section class="panel experiment-panel view-arena">
+      <div class="panel-head"><div><span class="eyebrow">PLAYGROUND / 01</span><h2>Closed-loop arena</h2></div><span class="live-dot">● AUTONOMOUS</span></div>
+      <div class="arena-shell"><canvas id="arcade-canvas" role="img" aria-label="Connectome-controlled maze"></canvas><div class="arena-overlay"><span>28 × 31 GRID</span><span id="arena-mode">PREDATOR FIELD</span></div><div class="touch-hint">Tap GOD MODE to intervene</div></div>
+      <div class="score-row"><span><b id="stat-score">0</b><small>SCORE</small></span><span><b id="stat-lives">3</b><small>LIVES</small></span><span><b id="ghost-reward-inline">0</b><small>GHOSTS</small></span><button id="human-toggle" class="primary-btn" type="button">Enter chase mode</button></div>
       <div class="god-mode">
-        <div class="control-title"><span>GOD MODE</span><small id="tool-status">Select a tool, then click the arena</small></div>
-        <div class="tool-row"><button class="tool-btn active" data-tool="sugar" type="button">+ Sugar</button><button class="tool-btn" data-tool="trap" type="button">◆ Bitter trap</button><button id="clear-sugar" class="tool-btn ghost" type="button">Clear sugar</button><button id="fill-sugar" class="tool-btn ghost" type="button">Fill map</button><button id="human-toggle" class="tool-btn ghost" type="button">Enter chase mode</button></div>
-        <div class="control-grid">
-          <label>Fly speed <output id="fly-speed-value">1.0×</output><input id="fly-speed" type="range" min=".35" max="2" step=".05" value="1"></label>
-          <label>Ghost speed <output id="ghost-speed-value">1.0×</output><input id="ghost-speed" type="range" min=".35" max="2" step=".05" value="1"></label>
-          <label class="switch-label">Ghost behavior <output id="behavior-value">PREDATORS</output><button id="behavior-toggle" class="switch" type="button" aria-pressed="false"><span></span></button></label>
-        </div>
+        <div class="control-title"><span>GOD MODE</span><small id="tool-status">Select a tool, then tap the arena</small></div>
+        <div class="tool-row"><button class="tool-btn active" data-tool="sugar" type="button">＋ Sugar</button><button class="tool-btn" data-tool="trap" type="button">◆ Trap</button><button id="clear-sugar" class="tool-btn" type="button">Clear</button><button id="fill-sugar" class="tool-btn" type="button">Fill</button></div>
+        <div class="control-grid"><label>Fly speed <output id="fly-speed-value">1.0×</output><input id="fly-speed" type="range" min=".35" max="2" step=".05" value="1"></label><label>Ghost speed <output id="ghost-speed-value">1.0×</output><input id="ghost-speed" type="range" min=".35" max="2" step=".05" value="1"></label><label class="switch-label">Ghost behavior <output id="behavior-value">PREDATORS</output><button id="behavior-toggle" class="switch" type="button" aria-pressed="false"><span></span></button></label></div>
       </div>
+      <div class="dpad" aria-label="Chase mode controls"><button data-dir="up" type="button">▲</button><div><button data-dir="left" type="button">◀</button><button data-dir="down" type="button">▼</button><button data-dir="right" type="button">▶</button></div></div>
     </section>
 
-    <section class="panel brain-panel">
-      <div class="panel-head"><div><span class="eyebrow">NEURAL IMAGING / 02</span><h2>Live connectome</h2></div><span class="panel-note" id="brain-status">FLYWIRE • loading 139,255 neurons</span></div>
-      <div class="brain-viewport"><canvas id="brain-canvas"></canvas><span class="viewport-label">TWO-PHOTON ACTIVITY</span></div>
+    <section class="panel brain-panel view-brain">
+      <div class="panel-head"><div><span class="eyebrow">NEURAL IMAGING / 02</span><h2>Live connectome</h2></div><span class="panel-note" id="brain-status">FLYWIRE • loading</span></div>
+      <div class="brain-viewport"><canvas id="brain-canvas"></canvas><span class="viewport-label">ACTIVITY FIELD / REPRESENTATIVE VIEW</span></div>
       <div class="state-strip"><div><span class="eyebrow">CURRENT STATE</span><strong id="state-ticker">GROOMING</strong><small id="state-log">awaiting transitions</small></div><div class="alert-ring"><span id="arousal-pct">0%</span><small>AROUSAL</small></div></div>
-      <div class="avatar-card"><div><span class="eyebrow">MOTOR READOUT</span><strong id="motor-action">HEADING 0°</strong><small id="motor-sub">fly avatar • synchronized</small></div><canvas id="fly-avatar" width="180" height="100" aria-label="Live 3D fly avatar"></canvas></div>
+      <div class="avatar-card"><div><span class="eyebrow">MOTOR READOUT</span><strong id="motor-action">HEADING 0°</strong><small>arena heading • model output</small></div><canvas id="fly-avatar" width="180" height="100" aria-label="Live fly avatar"></canvas></div>
     </section>
 
-    <aside class="panel telemetry-panel">
-      <div class="panel-head"><div><span class="eyebrow">TELEMETRY / 03</span><h2>Behavioral signals</h2></div><span class="panel-note">rolling 90 s</span></div>
-      <div class="metric-grid">
-        <div class="metric"><span>HUNGER PROXY / NPF</span><b id="val-npf">0%</b><div class="meter"><i id="meter-npf"></i></div></div>
-        <div class="metric"><span>THREAT PROXY / LOOMING</span><b id="val-panic">0%</b><div class="meter red"><i id="meter-panic"></i></div></div>
-        <div class="metric"><span>REWARD PROXY / MB-DAN</span><b id="val-dopamine">0%</b><div class="meter gold"><i id="meter-dopamine"></i></div></div>
-        <div class="metric"><span>STAMINA</span><b id="val-stamina">100%</b><div class="meter cyan"><i id="meter-stamina"></i></div></div>
-      </div>
-      <div class="chart-block"><div class="chart-head"><span>MODEL DRIVE BALANCE</span><small>normalized proxy activity</small></div><canvas id="drive-chart" width="420" height="170"></canvas><div class="chart-legend"><span class="green">● FORAGE</span><span class="red">● THREAT</span><span class="cyan">● EXPLORE</span><span class="gold">● REST</span></div></div>
-      <div class="chart-block"><div class="chart-head"><span>THREAT × REWARD PROXY</span><small>bubble = aggregate arousal proxy</small></div><canvas id="scatter-chart" width="420" height="140"></canvas></div>
-      <div class="chart-block timeline"><div class="chart-head"><span>RECENT STATE SEQUENCE</span><small>one sample / 140 ms</small></div><div id="timeline-strip" class="timeline-strip"></div><div class="timeline-labels"><span>−12.6 s</span><span>now</span></div></div>
-      <div class="telemetry-footer"><span id="gf-status">ESCAPE PROXY · IDLE</span><span id="disgust-flag">AVERSIVE PROXY QUIET</span><span id="reward-flag">GHOST REWARD · 0</span></div>
+    <aside class="panel telemetry-panel view-data">
+      <div class="panel-head"><div><span class="eyebrow">SIGNALS / 03</span><h2>Behavioral telemetry</h2></div><span class="panel-note">MODEL PROXIES</span></div>
+      <div class="metric-grid"><div class="metric"><span>HUNGER / NPF</span><b id="val-npf">0%</b><div class="meter"><i id="meter-npf"></i></div></div><div class="metric"><span>THREAT / LOOMING</span><b id="val-panic">0%</b><div class="meter red"><i id="meter-panic"></i></div></div><div class="metric"><span>REWARD / MB-DAN</span><b id="val-dopamine">0%</b><div class="meter gold"><i id="meter-dopamine"></i></div></div><div class="metric"><span>STAMINA</span><b id="val-stamina">100%</b><div class="meter cyan"><i id="meter-stamina"></i></div></div></div>
+      <div class="chart-block"><div class="chart-head"><span>MODEL DRIVE BALANCE</span><small>normalized activity</small></div><canvas id="drive-chart" width="420" height="170"></canvas><div class="chart-legend"><span class="green">● FORAGE</span><span class="red">● THREAT</span><span class="cyan">● EXPLORE</span><span class="gold">● REST</span></div></div>
+      <div class="chart-block"><div class="chart-head"><span>THREAT × REWARD</span><small>bubble = arousal</small></div><canvas id="scatter-chart" width="420" height="140"></canvas></div>
+      <div class="chart-block timeline"><div class="chart-head"><span>STATE SEQUENCE</span><small>recent 12.6 s</small></div><div id="timeline-strip" class="timeline-strip"></div><div class="timeline-labels"><span>−12.6 s</span><span>now</span></div></div>
+      <div class="telemetry-footer"><span id="gf-status">ESCAPE PROXY · IDLE</span><span id="disgust-flag">AVERSIVE QUIET</span><span id="reward-flag">GHOST REWARD · 0</span></div>
     </aside>
   </main>
 
-  <footer>PRUNED FUNCTIONAL MAPPING · NOT A LITERAL FLYWIRE GRAPH · <a href="README.md">METHODS</a><span id="stat-score">0</span> SCORE <span id="stat-lives">3</span> LIVES</footer>
-
-  <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
-  <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-  <script src="https://unpkg.com/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
-  <script src="https://unpkg.com/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
-  <script src="https://unpkg.com/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
-  <script src="https://unpkg.com/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
-  <script src="https://unpkg.com/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
-  <script src="https://unpkg.com/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+  <footer><span>FLYWIRE-DERIVED STRUCTURE · MODELED DYNAMICS</span><a href="README.md">METHODS ↗</a></footer>
+  <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script><script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script><script src="https://unpkg.com/three@0.128.0/examples/js/shaders/CopyShader.js"></script><script src="https://unpkg.com/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script><script src="https://unpkg.com/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script><script src="https://unpkg.com/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script><script src="https://unpkg.com/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script><script src="https://unpkg.com/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
   <script src="PacmanGame.js"></script><script src="Connectome.js"></script><script src="FlyNeuralEngine.js"></script><script src="FullBrainBridge.js"></script><script src="BrainVisualizer.js"></script><script src="main.js"></script>
 </body>
 </html>
