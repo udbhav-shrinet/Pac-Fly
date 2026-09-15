@@ -158,6 +158,30 @@
     ctx.shadowBlur = 0;
   }
 
+  /** Satiation pie chart: filled fraction = 1 - hunger, red + blinking once starving. */
+  function drawHungerPie(canvas, npfLevel, now) {
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width, h = canvas.height;
+    const cx = w / 2, cy = h / 2, r = Math.min(w, h) / 2 - 2;
+    const starving = npfLevel > 0.85;
+    const satiation = Math.min(1, Math.max(0, 1 - npfLevel));
+    const color = starving ? '#ff3355' : '#ff9a3c';
+
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = 'rgba(255,255,255,0.06)';
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+
+    const alpha = starving ? (0.5 + 0.5 * Math.sin(now / 140)) : 1;
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, r, -Math.PI / 2, -Math.PI / 2 + satiation * Math.PI * 2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
   const graphCanvases = {
     hunger: document.getElementById('graph-npf'),
     panic: document.getElementById('graph-panic'),
@@ -167,6 +191,11 @@
   };
   const graphColors = { hunger: '#ff9a3c', panic: '#ff3355', stress: '#ff5577', dopamine: '#ffb800', stamina: '#33e0ff' };
   const ringCanvas = document.getElementById('arousal-ring');
+  const hungerPieCanvas = document.getElementById('hunger-pie');
+
+  // Scrolling "State: X -> State: Y" transition log, most recent last.
+  const stateLog = [];
+  let lastLoggedState = null;
 
   const els = {
     valNpf: document.getElementById('val-npf'),
@@ -180,6 +209,7 @@
     heading: document.getElementById('stat-heading'),
     arousalPct: document.getElementById('arousal-pct'),
     stateTicker: document.getElementById('state-ticker'),
+    stateLog: document.getElementById('state-log'),
     disgustFlag: document.getElementById('disgust-flag'),
     hungerCard: document.querySelector('.graph-card[data-metric="hunger"]'),
   };
@@ -211,6 +241,14 @@
 
     const stateColor = STATE_COLORS[s.behaviorState] || '#33e0ff';
     drawArousalRing(ringCanvas, s.arousalLevel, stateColor);
+    drawHungerPie(hungerPieCanvas, s.npfLevel, now);
+
+    if (s.behaviorState !== lastLoggedState) {
+      stateLog.push(s.behaviorState);
+      if (stateLog.length > 6) stateLog.shift();
+      lastLoggedState = s.behaviorState;
+      els.stateLog.textContent = stateLog.map((st) => `State: ${st}`).join(' ➔ ');
+    }
 
     els.valNpf.textContent = `${Math.round(s.npfLevel * 100)}%`;
     els.valPanic.textContent = `${Math.round(s.panicLevel * 100)}%`;

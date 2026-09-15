@@ -63,14 +63,18 @@
       <div class="state-ticker-wrap">
         <span class="state-ticker-label">Drive State</span>
         <div class="state-ticker" id="state-ticker" data-state="GROOMING">GROOMING</div>
+        <div class="state-log" id="state-log" aria-label="Recent drive state transitions"></div>
         <div class="disgust-flag" id="disgust-flag" hidden>🤢 Bitter trap detected — Gr66a triggered</div>
       </div>
     </div>
 
     <div class="telem-graphs">
-      <article class="graph-card" data-metric="hunger">
+      <article class="graph-card graph-card-split" data-metric="hunger">
         <header><span class="graph-label">Hunger · NPF</span><span class="graph-value" id="val-npf">0%</span></header>
-        <canvas class="graph-canvas" id="graph-npf" width="300" height="48"></canvas>
+        <div class="graph-split-row">
+          <canvas class="graph-canvas" id="graph-npf" width="230" height="48"></canvas>
+          <canvas id="hunger-pie" width="44" height="44" aria-label="Satiation pie chart"></canvas>
+        </div>
       </article>
       <article class="graph-card" data-metric="panic">
         <header><span class="graph-label">Panic · LC4/GF Looming</span><span class="graph-value" id="val-panic">0%</span></header>
