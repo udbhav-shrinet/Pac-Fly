@@ -23,6 +23,27 @@
   const melody = { degree: 4, beat: 0, activityEma: null };
   let lastSnap = { arousal: .15, dopamine: .2 };
 
+  // The sim was fed pure sinusoids before, which drives it into a fixed
+  // periodic attractor within a few seconds — real spiking networks don't
+  // wander unless their input does. This is a slow random walk (mean-
+  // reverting so it stays in a plausible sensory range) standing in for an
+  // actual environment, so the brain has something non-repeating to react
+  // to. The walk is the only randomness in the loop; note choice below is
+  // still 100% a function of the brain's own state.
+  const env = { sugarBearing: 0, sugarDist: 5, ghostBearing: 0, ghostDist: 6, foodOdor: .6, dangerOdor: .15 };
+  function wander(value, center, spread, revert, noise) {
+    const next = value + (center - value) * revert + (Math.random() - .5) * noise;
+    return Math.max(center - spread, Math.min(center + spread, next));
+  }
+  function stepEnv() {
+    env.sugarBearing = wander(env.sugarBearing, 0, Math.PI, .02, .35);
+    env.sugarDist = wander(env.sugarDist, 5, 4, .03, .8);
+    env.ghostBearing = wander(env.ghostBearing, 0, Math.PI, .015, .3);
+    env.ghostDist = wander(env.ghostDist, 6, 4, .03, .9);
+    env.foodOdor = wander(env.foodOdor, .55, .4, .04, .12);
+    env.dangerOdor = wander(env.dangerOdor, .18, .18, .04, .08);
+  }
+
   const midiToHz = midi => 440 * Math.pow(2, (midi - 69) / 12);
 
   function setupAudio() {
@@ -145,16 +166,13 @@
       const snap = brainSnapshot(t);
       lastSnap = snap;
 
+      stepEnv();
       if (brain) {
         // headingIndex is a free-running clock, not derived from the brain's
         // own output — FullBrainBridge's headingAngle just echoes whatever
         // index it's given, so feeding it back in would collapse to a fixed point.
         const headingIndex = Math.floor(t / 1.4) % 4;
-        brain.update(.1, {
-          sugarBearing: Math.sin(t * .2), sugarDist: 3 + Math.sin(t * .11) * 2.5,
-          ghostBearing: Math.cos(t * .17), ghostDist: 6 + Math.sin(t * .13) * 4,
-          headingIndex, foodOdor: .7, dangerOdor: .12, temperature: .5,
-        });
+        brain.update(.1, { ...env, headingIndex, temperature: .5 });
       }
 
       // Register drifts with overall arousal (a real, continuously-updated
@@ -170,7 +188,7 @@
         melody.activityEma = melody.activityEma == null ? activitySum : melody.activityEma * .85 + activitySum * .15;
         if (melody.activityEma > 1e-3) {
           const ratio = activitySum / melody.activityEma;
-          burst = Math.max(-3, Math.min(3, Math.round((ratio - 1) * 6)));
+          burst = Math.max(-4, Math.min(4, Math.round((ratio - 1) * 7)));
         }
       }
       const arousalTerm = Math.max(0, Math.min(1, snap.arousal / .22));
@@ -179,7 +197,7 @@
       const centerDegree = Math.round(centerFrac * (SCALE.length - 1));
       const targetDegree = Math.max(0, Math.min(SCALE.length - 1, centerDegree + burst));
       const diff = targetDegree - melody.degree;
-      const step = Math.sign(diff) * Math.min(2, Math.abs(diff));
+      const step = Math.sign(diff) * Math.min(3, Math.abs(diff));
       melody.degree = Math.max(0, Math.min(SCALE.length - 1, melody.degree + step));
       let midi = SCALE[melody.degree];
       if (arousalTerm > .8 && melody.beat % 8 === 0) midi = Math.min(71, midi + 12);
