@@ -1,28 +1,51 @@
 /**
  * main.js — bootstrap/wiring layer only.
  *
- * This is the single place that knows about all three modules. PacmanGame,
- * FlyNeuralEngine, and BrainVisualizer never import each other — main.js
- * bridges them: game events feed the neural engine, and the neural engine's
- * state feeds back into the game (sprint speed, stun) and into the 3D
- * visualizer (read-only, every frame). Each module keeps its own render
- * loop; this file only runs a small periodic sync + HUD update, including
- * the oscilloscope-style telemetry graphs and the alertness ring.
+ * This is the single place that knows about all four modules. PacmanGame,
+ * Connectome, FlyNeuralEngine, and BrainVisualizer never import each
+ * other — main.js bridges them: PacmanGame hands a sensory snapshot into
+ * `engine.update(dt, sense)` every frame (which steps the real LIF network
+ * on a fixed 100ms cadence internally) and gets back motor scores that
+ * decide the next move; event callbacks inject discrete pulses (reward,
+ * aversive, escape) directly into the network; and the 3D visualizer
+ * reads `engine.state` — the network's own population activity — every
+ * frame, read-only. Each module keeps its own render loop; this file only
+ * runs a small periodic sync + HUD update, including the oscilloscope
+ * telemetry graphs and the alertness ring.
+ *
+ * `FlyNeuralEngine.create()` is async (it fetches and parses
+ * connectome.json), so the brain reference starts null and the arcade
+ * renders immediately — Pac-Man simply won't move until the network has
+ * loaded, which for a ~70KB JSON file is effectively instant.
  */
 
 (() => {
-  const engine = new FlyNeuralEngine();
+  /** @type {FlyNeuralEngine|null} */
+  let engine = null;
+  const fallbackState = {
+    headingAngle: 0, npfLevel: 0.2, dopamineTransient: 0, panicLevel: 0,
+    octopamineLevel: 0, arousalLevel: 0.1, ppl1Transient: 0,
+    giantFiberFiring: false, stunned: false, disgusted: false,
+    exhausted: false, behaviorState: 'GROOMING',
+  };
+  const engineState = () => (engine ? engine.state : fallbackState);
 
   const arcadeCanvas = document.getElementById('arcade-canvas');
   const game = new PacmanGame(arcadeCanvas, {
-    onDirectionChange: (angle) => engine.onDirectionChange(angle),
-    onPelletEaten: (isEnergizer) => engine.onPelletEaten(isEnergizer),
-    onGhostDistanceUpdate: (dist) => engine.onGhostDistanceUpdate(dist),
-    onHazardEaten: () => engine.onHazardEaten(),
-    onCaught: () => engine.onCaught(),
+    brainTick: (sense, dt) => (engine ? engine.update(dt, sense) : null),
+    onPelletEaten: (isEnergizer) => engine && engine.onPelletEaten(isEnergizer),
+    onHazardEaten: () => engine && engine.onHazardEaten(),
+    onCaught: () => engine && engine.onCaught(),
   });
 
   game.start();
+
+  FlyNeuralEngine.create('connectome.json')
+    .then((ready) => { engine = ready; })
+    .catch((err) => {
+      console.error('Pac-Fly: failed to load connectome.json — the fly has no brain and will not move.', err);
+      document.querySelector('.arcade-panel')?.classList.add('brain-load-failed');
+    });
 
   // The 3D visualizer depends on Three.js loading from a CDN. If that
   // fails (offline, blocked, slow network), the arcade game must keep
@@ -34,7 +57,7 @@
   } else {
     try {
       const brainCanvas = document.getElementById('brain-canvas');
-      visualizer = new BrainVisualizer(brainCanvas, () => engine.state);
+      visualizer = new BrainVisualizer(brainCanvas, engineState);
       visualizer.start();
     } catch (err) {
       console.warn('Pac-Fly: BrainVisualizer failed to initialize — running without it.', err);
@@ -168,11 +191,12 @@
     const dt = Math.min(0.05, (now - lastTime) / 1000);
     lastTime = now;
 
-    engine.update(dt);
-    game.setSprintActive(engine.isGiantFiberFiring());
-    engine.setExhausted(game.exhausted);
+    if (engine) {
+      game.setSprintActive(engine.isGiantFiberFiring());
+      engine.setExhausted(game.exhausted);
+    }
 
-    const s = engine.state;
+    const s = engineState();
 
     sampleAccum += dt * 1000;
     if (sampleAccum >= SAMPLE_MS) {

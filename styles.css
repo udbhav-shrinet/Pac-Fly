@@ -156,6 +156,16 @@ body {
   overflow: hidden;
 }
 
+.brain-load-failed .canvas-wrap { border-color: var(--neon-purple); }
+.brain-load-failed .canvas-wrap::after {
+  content: "connectome.json failed to load — the fly has no brain and will not move. Ghosts still run.";
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--neon-purple);
+  padding: 12px;
+  text-align: center;
+}
+
 #arcade-canvas {
   width: 100%;
   height: auto;
