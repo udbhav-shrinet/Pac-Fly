@@ -20,6 +20,7 @@
   --neon-red: #ff3355;
   --neon-amber: #ffcc00;
   --neon-purple: #c07bff;
+  --wall-blue: #2151ff;
 
   --radius-md: 10px;
   --radius-sm: 6px;
@@ -97,17 +98,21 @@ body {
 }
 .brand-text h1 {
   margin: 0;
-  font-family: var(--font-mono);
-  font-size: 1.4rem;
-  letter-spacing: 0.12em;
-  color: var(--text-primary);
-  text-shadow: 0 0 12px rgba(57,255,136,0.35);
+  font-family: 'Press Start 2P', var(--font-mono);
+  font-size: 1.3rem;
+  letter-spacing: 0.06em;
+  color: var(--neon-amber);
+  text-shadow:
+    0 0 6px rgba(255,204,0,0.8),
+    0 0 18px rgba(255,204,0,0.4),
+    2px 2px 0 var(--wall-blue, #2151ff);
 }
 .brand-sub {
-  margin: 2px 0 0;
-  font-size: 0.72rem;
+  margin: 6px 0 0;
+  font-size: 0.68rem;
   color: var(--text-secondary);
   letter-spacing: 0.04em;
+  font-family: var(--font-mono);
 }
 
 .header-stats { display: flex; gap: 22px; }
@@ -184,9 +189,11 @@ body {
 #arena-canvas {
   width: 100%;
   height: auto;
-  max-width: 560px;
-  aspect-ratio: 1 / 1;
+  max-width: 620px;
+  max-height: 82vh;
+  aspect-ratio: 28 / 36;
   display: block;
+  image-rendering: crisp-edges;
 }
 
 .panic-flash {

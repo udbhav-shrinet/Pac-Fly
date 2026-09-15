@@ -8,36 +8,83 @@
  * back into a discrete grid direction at each intersection. Nothing here
  * hand-codes "flee the ghost" — that behavior emerges from the LC4 -> GF
  * -> DN pathway once its inputs are wired up.
+ *
+ * The maze itself is the original 28x36 arcade Pac-Man layout (same tile
+ * grid used by the classic ROM), so the arena reads as "real Pac-Man" —
+ * full corridor network, ghost house, and the left/right wrap tunnel.
  */
 
 (() => {
-  const GRID = 16;
-  const CELL = 560 / GRID;
-  const TICK_MS = 130;
+  const GRID_W = 28;
+  const GRID_H = 36;
+  const CELL = 20;
+  const TICK_MS = 115;
+  const TUNNEL_ROW = 17;
 
-  // 1 = wall, 0 = open. Hand-authored simple maze, symmetric-ish, always connected.
-  const MAZE = [
-    "1111111111111111",
-    "1000000000000001",
-    "1011110110111101",
-    "1010000000000101",
-    "1010111101110101",
-    "1000100000010001",
-    "1110101111010111",
-    "1000101000010001",
-    "1011101011110101",
-    "1010000000000101",
-    "1010111011101101",
-    "1000100000010001",
-    "1101111011110111",
-    "1000000000000001",
-    "1011111001111101",
-    "1111111111111111",
+  // The classic arcade maze, unmodified tile-for-tile.
+  // '|' = wall, '.' = dot, 'o' = power dot, ' ' = open floor (no dot), '_' = void/out of bounds, '-' = ghost-house door.
+  const MAZE_ROWS = [
+    "____________________________",
+    "____________________________",
+    "____________________________",
+    "||||||||||||||||||||||||||||",
+    "|............||............|",
+    "|.||||.|||||.||.|||||.||||.|",
+    "|o||||.|||||.||.|||||.||||o|",
+    "|.||||.|||||.||.|||||.||||.|",
+    "|..........................|",
+    "|.||||.||.||||||||.||.||||.|",
+    "|.||||.||.||||||||.||.||||.|",
+    "|......||....||....||......|",
+    "||||||.||||| || |||||.||||||",
+    "_____|.||||| || |||||.|_____",
+    "_____|.||          ||.|_____",
+    "_____|.|| |||--||| ||.|_____",
+    "||||||.|| |______| ||.||||||",
+    "      .   |______|   .      ",
+    "||||||.|| |______| ||.||||||",
+    "_____|.|| |||||||| ||.|_____",
+    "_____|.||          ||.|_____",
+    "_____|.|| |||||||| ||.|_____",
+    "||||||.|| |||||||| ||.||||||",
+    "|............||............|",
+    "|.||||.|||||.||.|||||.||||.|",
+    "|.||||.|||||.||.|||||.||||.|",
+    "|o..||.......  .......||..o|",
+    "|||.||.||.||||||||.||.||.|||",
+    "|||.||.||.||||||||.||.||.|||",
+    "|......||....||....||......|",
+    "|.||||||||||.||.||||||||||.|",
+    "|.||||||||||.||.||||||||||.|",
+    "|..........................|",
+    "||||||||||||||||||||||||||||",
+    "____________________________",
+    "____________________________",
   ];
 
+  function tileAt(cx, cy) {
+    if (cy < 0 || cy >= GRID_H) return '_';
+    let x = cx;
+    if (cy === TUNNEL_ROW) {
+      // left/right wrap tunnel
+      if (x < 0) x = GRID_W - 1;
+      if (x >= GRID_W) x = 0;
+    } else if (x < 0 || x >= GRID_W) {
+      return '_';
+    }
+    return MAZE_ROWS[cy][x];
+  }
+
   function isOpen(cx, cy) {
-    if (cy < 0 || cy >= GRID || cx < 0 || cx >= GRID) return false;
-    return MAZE[cy][cx] === '0';
+    const t = tileAt(cx, cy);
+    return t === '.' || t === 'o' || t === ' ';
+  }
+
+  function wrapX(cx, cy) {
+    if (cy !== TUNNEL_ROW) return cx;
+    if (cx < 0) return GRID_W - 1;
+    if (cx >= GRID_W) return 0;
+    return cx;
   }
 
   const DIRS = {
@@ -51,7 +98,7 @@
   function openNeighbors(cx, cy) {
     const out = [];
     for (const [name, d] of Object.entries(DIRS)) {
-      if (isOpen(cx + d.dx, cy + d.dy)) out.push(name);
+      if (isOpen(wrapX(cx + d.dx, cy), cy + d.dy)) out.push(name);
     }
     return out;
   }
@@ -60,7 +107,7 @@
   // State
   // ---------------------------------------------------------------------
 
-  let sugar = new Set();   // "cx,cy"
+  let sugar = new Map();   // "cx,cy" -> 'normal' | 'power'
   let ghosts = [];         // {cx, cy, dir, moveT}
   let fly = null;          // {cx, cy, dir, moveT, dead}
   let score = 0;
@@ -74,41 +121,53 @@
   function key(cx, cy) { return `${cx},${cy}`; }
 
   function randomOpenCell() {
-    let cx, cy;
+    let cx, cy, tries = 0;
     do {
-      cx = Math.floor(Math.random() * GRID);
-      cy = Math.floor(Math.random() * GRID);
-    } while (!isOpen(cx, cy));
+      cx = Math.floor(Math.random() * GRID_W);
+      cy = Math.floor(Math.random() * GRID_H);
+      tries++;
+    } while (!isOpen(cx, cy) && tries < 500);
     return { cx, cy };
+  }
+
+  function seedAllDots() {
+    sugar = new Map();
+    for (let y = 0; y < GRID_H; y++) {
+      for (let x = 0; x < GRID_W; x++) {
+        const t = MAZE_ROWS[y][x];
+        if (t === '.') sugar.set(key(x, y), 'normal');
+        else if (t === 'o') sugar.set(key(x, y), 'power');
+      }
+    }
   }
 
   function seedSugar(count) {
     let added = 0, attempts = 0;
-    while (added < count && attempts < count * 20) {
+    while (added < count && attempts < count * 30) {
       attempts++;
       const { cx, cy } = randomOpenCell();
       const k = key(cx, cy);
       if (!sugar.has(k) && !(fly && fly.cx === cx && fly.cy === cy)) {
-        sugar.add(k);
+        sugar.set(k, 'normal');
         added++;
       }
     }
   }
 
   function initGame() {
-    sugar = new Set();
     ghosts = [];
     score = 0;
     ticks = 0;
     running = true;
 
-    fly = { cx: 8, cy: 8, dir: 'left', moveT: 0, px: 8, py: 8 };
+    const startCx = 13, startCy = 26; // classic Pac-Man start row, open floor tile
+    fly = { cx: startCx, cy: startCy, dir: 'left', moveT: 0, px: startCx, py: startCy };
     if (!isOpen(fly.cx, fly.cy)) {
       const c = randomOpenCell();
       fly.cx = c.cx; fly.cy = c.cy; fly.px = c.cx; fly.py = c.cy;
     }
 
-    seedSugar(28);
+    seedAllDots();
 
     for (const k of ['al', 'mb', 'gf', 'dnL', 'dnR', 'dnF']) {
       history[k] = new Array(HIST_LEN).fill(0);
@@ -119,39 +178,41 @@
     hideModal();
   }
 
+  const GHOST_SPAWNS = [
+    { cx: 1, cy: 4 }, { cx: 26, cy: 4 },
+    { cx: 1, cy: 32 }, { cx: 26, cy: 32 },
+    { cx: 13, cy: 8 }, { cx: 12, cy: 29 },
+  ];
+
   function addGhost() {
     if (ghosts.length >= 6) return;
-    const corners = [
-      { cx: 1, cy: 1 }, { cx: GRID - 2, cy: 1 },
-      { cx: 1, cy: GRID - 2 }, { cx: GRID - 2, cy: GRID - 2 },
-    ];
-    let spot = corners.find(c => isOpen(c.cx, c.cy) && !ghosts.some(g => g.cx === c.cx && g.cy === c.cy));
+    let spot = GHOST_SPAWNS.find(c => isOpen(c.cx, c.cy) && !ghosts.some(g => g.cx === c.cx && g.cy === c.cy));
     if (!spot) spot = randomOpenCell();
     ghosts.push({ cx: spot.cx, cy: spot.cy, px: spot.cx, py: spot.cy, dir: 'up', moveT: 0 });
   }
 
   function removeAllGhosts() { ghosts = []; }
-  function dropSugar() { seedSugar(10); }
-  function clearSugar() { sugar = new Set(); }
+  function dropSugar() { seedSugar(24); }
+  function clearSugar() { sugar = new Map(); }
 
   // ---------------------------------------------------------------------
   // Simulation step
   // ---------------------------------------------------------------------
 
   function nearestSugarDist(cx, cy) {
-    let best = Infinity, dir = null;
-    for (const s of sugar) {
+    let best = Infinity, target = null;
+    for (const s of sugar.keys()) {
       const [sx, sy] = s.split(',').map(Number);
       const d = Math.abs(sx - cx) + Math.abs(sy - cy);
-      if (d < best) { best = d; dir = { sx, sy }; }
+      if (d < best) { best = d; target = { sx, sy }; }
     }
-    return { dist: best, target: dir };
+    return { dist: best, target };
   }
 
   function ghostSignalsFor(cx, cy) {
     return ghosts.map(g => {
       const d = Math.abs(g.cx - cx) + Math.abs(g.cy - cy);
-      const proximity = Math.max(0, 1 - d / 9);
+      const proximity = Math.max(0, 1 - d / 11);
       const prevD = (g.prevDistToFly ?? d);
       const approaching = d <= prevD;
       g.prevDistToFly = d;
@@ -161,7 +222,7 @@
 
   function directionScore(dirName, motor) {
     const d = DIRS[dirName];
-    const nx = fly.cx + d.dx, ny = fly.cy + d.dy;
+    const nx = wrapX(fly.cx + d.dx, fly.cy), ny = fly.cy + d.dy;
 
     let score = 0;
 
@@ -233,14 +294,14 @@
       let best = candidates[0], bestScore = -Infinity;
       for (const c of candidates) {
         const d = DIRS[c];
-        const nx = g.cx + d.dx, ny = g.cy + d.dy;
+        const nx = wrapX(g.cx + d.dx, g.cy), ny = g.cy + d.dy;
         const dist = Math.abs(nx - fly.cx) + Math.abs(ny - fly.cy);
         const s = -dist + Math.random() * 3;
         if (s > bestScore) { bestScore = s; best = c; }
       }
       g.dir = best;
       const d = DIRS[best];
-      g.cx += d.dx; g.cy += d.dy;
+      g.cx = wrapX(g.cx + d.dx, g.cy); g.cy += d.dy;
     }
   }
 
@@ -248,7 +309,7 @@
     if (!running || !Brain.isReady()) return;
 
     const { dist: sugarDist } = nearestSugarDist(fly.cx, fly.cy);
-    const sugarProximity = isFinite(sugarDist) ? Math.max(0, 1 - sugarDist / 12) : 0;
+    const sugarProximity = isFinite(sugarDist) ? Math.max(0, 1 - sugarDist / 14) : 0;
     const gSignals = ghostSignalsFor(fly.cx, fly.cy);
 
     Brain.injectStimuli({ sugarProximity, ghostSignals: gSignals });
@@ -267,23 +328,27 @@
       const newDir = chooseFlyDirection(motor);
       fly.dir = newDir;
       const d = DIRS[newDir];
-      const nx = fly.cx + d.dx, ny = fly.cy + d.dy;
+      const nx = wrapX(fly.cx + d.dx, fly.cy), ny = fly.cy + d.dy;
       if (isOpen(nx, ny)) {
         fly.cx = nx; fly.cy = ny;
       }
     }
 
+    moveGhosts();
+
     const k = key(fly.cx, fly.cy);
     if (sugar.has(k)) {
+      const kind = sugar.get(k);
       sugar.delete(k);
-      score += 10;
+      score += kind === 'power' ? 50 : 10;
+      const danKick = kind === 'power' ? 1.4 : 0.9;
       // Reward pulse: extra dopamine drive is already modeled inside the
       // connectome via AL -> MB when sensory current is high; we also give
       // a direct DAN kick to mimic real-time reward delivery on capture.
       for (const n of Brain.allNodes()) {
-        if (n.id.startsWith('MB_DAN')) n.externalCurrent = (n.externalCurrent || 0) + 0.9;
+        if (n.id.startsWith('MB_DAN')) n.externalCurrent = (n.externalCurrent || 0) + danKick;
       }
-      if (sugar.size === 0) seedSugar(20);
+      if (sugar.size === 0) seedAllDots();
     }
 
     for (const g of ghosts) {
@@ -318,55 +383,80 @@
   }
 
   // ---------------------------------------------------------------------
-  // Rendering — Arena
+  // Rendering — Arena (authentic arcade-style: black floor, thin blue
+  // neon corridor outlines traced along wall/floor boundaries — not solid
+  // wall blocks — the same technique the original ROM's maze art uses)
   // ---------------------------------------------------------------------
 
   const arenaCanvas = document.getElementById('arena-canvas');
   const actx = arenaCanvas.getContext('2d');
 
-  function drawArena() {
-    actx.clearRect(0, 0, arenaCanvas.width, arenaCanvas.height);
-    actx.fillStyle = '#070a10';
-    actx.fillRect(0, 0, arenaCanvas.width, arenaCanvas.height);
+  const WALL_COLOR = '#2151ff';
+  const WALL_GLOW = '#5a7bff';
 
-    // Walls
-    actx.fillStyle = '#152033';
-    actx.strokeStyle = '#24344a';
-    for (let y = 0; y < GRID; y++) {
-      for (let x = 0; x < GRID; x++) {
-        if (MAZE[y][x] === '1') {
-          actx.fillRect(x * CELL, y * CELL, CELL, CELL);
-        }
+  function drawWallOutline() {
+    actx.lineCap = 'round';
+    actx.lineJoin = 'round';
+    actx.strokeStyle = WALL_COLOR;
+    actx.shadowColor = WALL_GLOW;
+    actx.shadowBlur = 5;
+    actx.lineWidth = 3;
+
+    const inset = 1.5;
+    actx.beginPath();
+    for (let y = 0; y < GRID_H; y++) {
+      for (let x = 0; x < GRID_W; x++) {
+        const t = MAZE_ROWS[y][x];
+        if (t !== '|') continue;
+        const left = x * CELL, top = y * CELL, right = left + CELL, bottom = top + CELL;
+
+        if (isOpen(x, y - 1)) { actx.moveTo(left + inset, top + inset); actx.lineTo(right - inset, top + inset); }
+        if (isOpen(x, y + 1)) { actx.moveTo(left + inset, bottom - inset); actx.lineTo(right - inset, bottom - inset); }
+        if (isOpen(wrapX(x - 1, y), y)) { actx.moveTo(left + inset, top + inset); actx.lineTo(left + inset, bottom - inset); }
+        if (isOpen(wrapX(x + 1, y), y)) { actx.moveTo(right - inset, top + inset); actx.lineTo(right - inset, bottom - inset); }
       }
     }
+    actx.stroke();
+    actx.shadowBlur = 0;
+  }
 
-    // Sugar
-    for (const s of sugar) {
+  function drawArena() {
+    actx.clearRect(0, 0, arenaCanvas.width, arenaCanvas.height);
+    actx.fillStyle = '#02040a';
+    actx.fillRect(0, 0, arenaCanvas.width, arenaCanvas.height);
+
+    drawWallOutline();
+
+    // Sugar (dots)
+    for (const [s, kind] of sugar) {
       const [sx, sy] = s.split(',').map(Number);
       const cx = sx * CELL + CELL / 2, cy = sy * CELL + CELL / 2;
-      const r = CELL * 0.14;
-      const grad = actx.createRadialGradient(cx, cy, 0, cx, cy, r * 3);
-      grad.addColorStop(0, 'rgba(57,255,136,0.9)');
+      const isPower = kind === 'power';
+      const r = isPower ? CELL * 0.28 : CELL * 0.11;
+      const pulse = isPower ? 0.75 + 0.25 * Math.sin(Date.now() / 160) : 1;
+
+      const grad = actx.createRadialGradient(cx, cy, 0, cx, cy, r * (isPower ? 2.4 : 3));
+      grad.addColorStop(0, `rgba(57,255,136,${isPower ? 0.55 : 0.85})`);
       grad.addColorStop(1, 'rgba(57,255,136,0)');
       actx.fillStyle = grad;
       actx.beginPath();
-      actx.arc(cx, cy, r * 3, 0, Math.PI * 2);
+      actx.arc(cx, cy, r * (isPower ? 2.4 : 3) * pulse, 0, Math.PI * 2);
       actx.fill();
 
       actx.fillStyle = '#39ff88';
       actx.beginPath();
-      actx.arc(cx, cy, r, 0, Math.PI * 2);
+      actx.arc(cx, cy, r * (isPower ? pulse : 1), 0, Math.PI * 2);
       actx.fill();
     }
 
     // Ghosts
     for (const g of ghosts) {
-      g.px += (g.cx - g.px) * 0.35;
-      g.py += (g.cy - g.py) * 0.35;
+      g.px += (g.cx - g.px) * 0.3;
+      g.py += (g.cy - g.py) * 0.3;
       const cx = g.px * CELL + CELL / 2, cy = g.py * CELL + CELL / 2;
-      const r = CELL * 0.36;
+      const r = CELL * 0.42;
       const grad = actx.createRadialGradient(cx, cy, 0, cx, cy, r * 2.2);
-      grad.addColorStop(0, 'rgba(255,51,85,0.55)');
+      grad.addColorStop(0, 'rgba(255,51,85,0.5)');
       grad.addColorStop(1, 'rgba(255,51,85,0)');
       actx.fillStyle = grad;
       actx.beginPath();
@@ -394,10 +484,10 @@
 
     // Fly
     if (fly) {
-      fly.px += (fly.cx - fly.px) * 0.4;
-      fly.py += (fly.cy - fly.py) * 0.4;
+      fly.px += (fly.cx - fly.px) * 0.35;
+      fly.py += (fly.cy - fly.py) * 0.35;
       const cx = fly.px * CELL + CELL / 2, cy = fly.py * CELL + CELL / 2;
-      const r = CELL * 0.34;
+      const r = CELL * 0.4;
       const jitter = running ? (Math.random() - 0.5) * 1.4 : 0;
 
       const grad = actx.createRadialGradient(cx, cy, 0, cx, cy, r * 2.6);
