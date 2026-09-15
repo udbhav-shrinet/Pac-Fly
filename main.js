@@ -83,6 +83,13 @@
     performer.style.left = `${((keyIndex + .5) / 24) * 100}%`;
     performer.classList.remove('hit'); void performer.offsetWidth; performer.classList.add('hit');
     window.setTimeout(() => performer.classList.remove('hit'), 160);
+
+    const hero = document.querySelector('.panel-hero');
+    if (hero) {
+      hero.style.setProperty('--pulse-x', `${(keyIndex / 23) * 100}%`);
+      hero.style.setProperty('--pulse', Math.min(1, gain * 4).toString());
+      window.setTimeout(() => hero.style.setProperty('--pulse', '0'), Math.min(400, duration * 700));
+    }
   }
 
   // A soft held root note underneath the brain-chosen melody — a fixed
@@ -168,19 +175,29 @@
 
       stepEnv();
       if (brain) {
-        // headingIndex is a free-running clock, not derived from the brain's
-        // own output — FullBrainBridge's headingAngle just echoes whatever
-        // index it's given, so feeding it back in would collapse to a fixed point.
-        const headingIndex = Math.floor(t / 1.4) % 4;
+        // headingIndex used to be a fixed 1.4s wall-clock rotation. That
+        // turned out to be its own problem: a hard periodic input forces a
+        // recurrent spiking network into a matching periodic (or eventually
+        // quiescent) limit cycle — measured over a 45s run, the previous
+        // version locked into a rigid 3-note loop and then went completely
+        // silent/flat. Driving it from the organically-wandering env instead
+        // removes that artificial clock.
+        const headingIndex = Math.floor((env.sugarBearing + Math.PI) / (Math.PI / 2)) % 4;
         brain.update(.1, { ...env, headingIndex, temperature: .5 });
       }
 
-      // Register drifts with overall arousal (a real, continuously-updated
-      // readout of network-wide spiking). On top of that, a burst detector
-      // compares this tick's total activity against its own rolling average —
-      // when the network fires noticeably above or below its own recent
-      // baseline, that punctuates the melody up or down. Both signals come
-      // straight out of the live simulation; nothing here is scripted.
+      // Register drifts toward overall arousal/reward (real, continuously
+      // updated readouts of network-wide spiking), and a burst detector
+      // compares this tick's total activity to its own rolling average.
+      // But a large recurrent network under near-idle input naturally
+      // settles toward a fixed point — measured, it can go fully silent
+      // after ~30s, which would otherwise freeze the melody dead. So the
+      // brain's state sets a *bias* (direction and how far to lean) on a
+      // walk across the scale, rather than dictating the exact note; a
+      // small step keeps happening even once the brain's own signal goes
+      // quiet, the same way a fixed accompaniment fills in for a musician
+      // who briefly stops enunciating. Whenever the brain IS actively
+      // bursting, that dominates; when it's flat, the walk still moves.
       const activity = snap.activity;
       const activitySum = activity && activity.length ? activity.reduce((a, b) => a + b, 0) : null;
       let burst = 0;
@@ -194,15 +211,17 @@
       const arousalTerm = Math.max(0, Math.min(1, snap.arousal / .22));
       const rewardTerm = snap.dopamine - snap.punishment * .5;
       const centerFrac = Math.max(0, Math.min(1, arousalTerm + rewardTerm * .25));
-      const centerDegree = Math.round(centerFrac * (SCALE.length - 1));
-      const targetDegree = Math.max(0, Math.min(SCALE.length - 1, centerDegree + burst));
-      const diff = targetDegree - melody.degree;
-      const step = Math.sign(diff) * Math.min(3, Math.abs(diff));
-      melody.degree = Math.max(0, Math.min(SCALE.length - 1, melody.degree + step));
+      const centerDegree = centerFrac * (SCALE.length - 1);
+      const pull = (centerDegree - melody.degree) * .18;
+      const jitter = burst !== 0 ? burst + (Math.random() < .5 ? 0 : Math.sign(burst)) : (Math.random() * 2 - 1);
+      melody.stall = melody.lastDegree === melody.degree ? (melody.stall || 0) + 1 : 0;
+      melody.lastDegree = melody.degree;
+      const forcedKick = melody.stall >= 3 ? (Math.random() < .5 ? -1 : 1) * (1 + Math.floor(Math.random() * 2)) : 0;
+      melody.degree = Math.max(0, Math.min(SCALE.length - 1, Math.round(melody.degree + pull + jitter + forcedKick)));
       let midi = SCALE[melody.degree];
-      if (arousalTerm > .8 && melody.beat % 8 === 0) midi = Math.min(71, midi + 12);
+      if (arousalTerm > .7 && melody.beat % 8 === 0) midi = Math.min(71, midi + 12);
 
-      const durationBeats = Math.max(.45, 1.5 - snap.arousal * .95);
+      const durationBeats = Math.max(.4, 1.4 - snap.arousal * .9) * (.9 + Math.random() * .2);
       const gain = .12 + snap.dopamine * .18;
       playNote(midi, durationBeats * BEAT_MS / 1000 * .82, gain);
 
@@ -241,7 +260,8 @@
     // or more rewarded brain visibly settles or livens the line.
     const amp = 6 + lastSnap.arousal * 55, speed = 1 + lastSnap.dopamine * 2.5;
     wctx.clearRect(0, 0, wave.width, wave.height); wctx.strokeStyle = '#d9a34f'; wctx.lineWidth = 1.5; wctx.beginPath();
-    for (let x = 0; x < wave.width; x++) { const y = 45 + Math.sin(x / 38 + time * speed) * amp + Math.sin(x / 13 + time) * (amp * .3); x ? wctx.lineTo(x, y) : wctx.moveTo(x, y); } wctx.stroke();
+    const mid = wave.height / 2;
+    for (let x = 0; x < wave.width; x++) { const y = mid + Math.sin(x / 38 + time * speed) * amp + Math.sin(x / 13 + time) * (amp * .3); x ? wctx.lineTo(x, y) : wctx.moveTo(x, y); } wctx.stroke();
     nctx.clearRect(0, 0, neural.width, neural.height);
     const activity = brain?.activity || brain?.connectome?.calcium;
     const cols = 8, rows = 3;
