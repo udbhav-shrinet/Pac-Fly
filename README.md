@@ -7,11 +7,16 @@ and neural activity field.
 
 ## Audio
 
-The built-in player performs real public-domain melodies as piano arrangements:
-`Ode to Joy`, `Greensleeves`, and `Canon in D`. Click play to hear them, or
-touch any piano key for a note. The **Load your song** control accepts a local
-audio file, so licensed recordings such as *Waving Flag* can be played without
-redistributing copyrighted music.
+The fly performs ten public-domain melodies as piano arrangements, including
+`Ode to Joy`, `Für Elise`, `Moonlight Sonata`, `Canon in D`, `Greensleeves`,
+`Amazing Grace`, `Jingle Bells`, `Happy Birthday`, `Scarborough Fair`, and
+`Beethoven Fifth`.
+
+The piano has exactly 24 keys. During training, the next target key is
+highlighted. The fly selects one key per beat: a correct selection produces a
+dopamine reward, while a wrong selection produces punishment. Each trial
+updates the fly's per-song, per-position policy and reduces exploration, so
+the performance converges on the target melody.
 
 ## Run
 

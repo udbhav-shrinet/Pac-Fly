@@ -33,13 +33,12 @@
     </section>
 
     <section class="console">
-      <div class="now-playing"><div><span class="eyebrow">NOW PLAYING</span><h2 id="track-name">Ode to Joy <em>— Beethoven</em></h2><p id="track-note">Public-domain piano arrangement · ready to play</p></div><button id="play-track" class="play" type="button" aria-label="Play song">▶</button></div>
-      <div class="controls"><button id="previous" type="button">‹</button><button id="next" type="button">›</button><input id="volume" type="range" min="0" max="1" step=".01" value=".65" aria-label="Volume"><span id="volume-label">65%</span><label class="upload">Load your song <input id="song-file" type="file" accept="audio/*"></label></div>
+      <div class="now-playing"><div><span class="eyebrow">NOW PLAYING</span><h2 id="track-name">Ode to Joy <em>— Beethoven</em></h2><p id="track-note">The fly hears the next target through its sensory input</p></div><button id="play-track" class="play" type="button" aria-label="Start fly training">▶</button></div>
+      <div class="controls"><label class="song-picker">MELODY <select id="song-picker" aria-label="Choose a melody"></select></label><span class="learning-badge" id="learning-badge">EXPLORATION 100%</span><span class="trial-count" id="trial-count">TRIAL 000</span></div>
       <div class="visuals"><div class="wave-card"><div class="card-title"><span>DOPAMINE LEVELS</span><b id="dopamine-value">32%</b></div><canvas id="wave" width="600" height="130"></canvas></div><div class="neural-card"><div class="card-title"><span>NEURAL ACTIVITY</span><b id="neural-value">LIVE</b></div><canvas id="neural" width="360" height="130"></canvas></div></div>
-      <div class="status"><span><i class="live"></i> FLY BRAIN CONNECTED</span><span id="status-text">press play: the fly will perform</span><span id="performer-status">FLY IS LISTENING</span></div>
+      <div class="status"><span><i class="live"></i> FLY BRAIN CONNECTED</span><span id="status-text">press play: the fly will learn</span><span id="performer-status">TARGET KEY READY</span></div>
     </section>
   </main>
-  <audio id="uploaded-audio" preload="metadata"></audio>
   <script src="main.js"></script>
 </body>
 </html>
