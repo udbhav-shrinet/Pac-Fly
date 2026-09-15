@@ -44,6 +44,7 @@ class BrainVisualizer {
     this.scene.add(key);
 
     this._buildRegions();
+    this._buildImagingField();
     this._buildBloom(width, height);
 
     if (typeof THREE.OrbitControls === 'function') {
@@ -82,10 +83,15 @@ class BrainVisualizer {
     // A dense point cloud gives the viewport the crisp-center / diffuse-halo
     // character of two-photon calcium imaging instead of solid cartoon nodes.
     const neuronPositions = [];
-    for (let i = 0; i < 150; i++) {
-      const theta = Math.random() * Math.PI * 2;
-      const phi = Math.acos(2 * Math.random() - 1);
-      const radius = 0.35 + Math.random() * 1.35;
+    let seed = 90317;
+    const random = () => {
+      seed = (seed * 1664525 + 1013904223) >>> 0;
+      return seed / 4294967296;
+    };
+    for (let i = 0; i < 720; i++) {
+      const theta = random() * Math.PI * 2;
+      const phi = Math.acos(2 * random() - 1);
+      const radius = 0.35 + random() * 1.35;
       neuronPositions.push(
         Math.sin(phi) * Math.cos(theta) * radius * 1.15,
         Math.cos(phi) * radius * 0.82,
@@ -106,6 +112,13 @@ class BrainVisualizer {
     const neuronCloud = new THREE.Points(neuronGeometry, neuronMaterial);
     group.add(neuronCloud);
     this.neuronCloud = neuronCloud;
+    const haloMaterial = neuronMaterial.clone();
+    haloMaterial.color.set(0x1b6680);
+    haloMaterial.size = 0.16;
+    haloMaterial.opacity = 0.08;
+    const haloCloud = new THREE.Points(neuronGeometry, haloMaterial);
+    group.add(haloCloud);
+    this.neuronHalo = haloCloud;
 
     // --- Ellipsoid Body: a toroidal ring + one orbiting "phase bump" ---
     const ebGroup = new THREE.Group();
@@ -188,6 +201,42 @@ class BrainVisualizer {
     this.giantFiber = { group: gfGroup, ganglion, axons };
   }
 
+  _buildImagingField() {
+    const field = new THREE.Group();
+    field.position.z = -0.35;
+    this.scene.add(field);
+    const grid = new THREE.GridHelper(5.4, 18, 0x155064, 0x0b2834);
+    grid.rotation.x = Math.PI / 2;
+    grid.position.z = -0.8;
+    grid.material.transparent = true;
+    grid.material.opacity = 0.2;
+    field.add(grid);
+    const fiberMaterial = new THREE.LineBasicMaterial({
+      color: 0x17657a, transparent: true, opacity: 0.3,
+      blending: THREE.AdditiveBlending,
+    });
+    const fibers = new THREE.Group();
+    let seed = 417;
+    const random = () => {
+      seed = (seed * 1103515245 + 12345) >>> 0;
+      return seed / 4294967296;
+    };
+    for (let i = 0; i < 34; i++) {
+      const points = [];
+      const start = new THREE.Vector3((random() - 0.5) * 3.4, (random() - 0.5) * 2.8, (random() - 0.5) * 1.2);
+      for (let j = 0; j < 7; j++) {
+        points.push(new THREE.Vector3(
+          start.x + (random() - 0.5) * 1.2,
+          start.y + (j - 3) * 0.22 + (random() - 0.5) * 0.18,
+          start.z + (random() - 0.5) * 0.35
+        ));
+      }
+      fibers.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(points), fiberMaterial));
+    }
+    field.add(fibers);
+    this.imagingField = { group: field, grid, fibers };
+  }
+
   _buildBloom(width, height) {
     if (typeof THREE.EffectComposer !== 'function' || typeof THREE.UnrealBloomPass !== 'function') {
       this.composer = null; // graceful fallback: plain renderer.render()
@@ -214,6 +263,7 @@ class BrainVisualizer {
   // -------------------------------------------------------------------
 
   _applyState(state, dt) {
+    const activity = Math.max(state.arousalLevel || 0, state.panicLevel || 0, state.dopamineTransient || 0);
     // Ellipsoid Body: the active bump orbits the ring at the current heading.
     const { ring, bump, radius } = this.ellipsoidBody;
     const targetX = Math.cos(state.headingAngle) * radius;
@@ -252,8 +302,20 @@ class BrainVisualizer {
     }
     if (this.neuronCloud) {
       this.neuronCloud.material.opacity = 0.18 + (state.arousalLevel || 0) * 0.62;
-      this.neuronCloud.material.size = 0.045 + (state.panicLevel || 0) * 0.04;
+      this.neuronCloud.material.size = 0.035 + activity * 0.055;
       this.neuronCloud.rotation.y += dt * 0.08;
+    }
+    if (this.neuronHalo) {
+      this.neuronHalo.material.opacity = 0.05 + activity * 0.2;
+      this.neuronHalo.material.size = 0.12 + activity * 0.1;
+      this.neuronHalo.rotation.y -= dt * 0.035;
+    }
+    if (this.imagingField) {
+      this.imagingField.grid.material.opacity = 0.12 + activity * 0.24;
+      this.imagingField.fibers.rotation.z += dt * 0.012;
+      this.imagingField.fibers.children.forEach((fiber, index) => {
+        fiber.material.opacity = 0.12 + activity * 0.4 + (index % 5 === 0 ? (state.dopamineTransient || 0) * 0.5 : 0);
+      });
     }
   }
 
