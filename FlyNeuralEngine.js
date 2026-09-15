@@ -204,6 +204,9 @@ class FlyNeuralEngine {
   /** PAM cluster dopaminergic reward pulse on pellet capture. */
   onPelletEaten(isEnergizer) {
     this.connectome.injectPopulation('PAM_DAN', isEnergizer ? 2.2 : 1.1);
+    // Sugar is the only satiation event. The constant NPF drive in _tick()
+    // continues to deplete hunger between meals.
+    this.connectome.injectPopulation('NPF', isEnergizer ? -1.6 : -0.9);
   }
 
   /** PPL1 aversive pulse + physical stun window on bitter-trap contact. */

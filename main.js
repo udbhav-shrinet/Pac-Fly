@@ -1,275 +1,80 @@
-/**
- * main.js — bootstrap/wiring layer only.
- *
- * This is the single place that knows about all four modules. PacmanGame,
- * Connectome, FlyNeuralEngine, and BrainVisualizer never import each
- * other — main.js bridges them: PacmanGame hands a sensory snapshot into
- * `engine.update(dt, sense)` every frame (which steps the real LIF network
- * on a fixed 100ms cadence internally) and gets back motor scores that
- * decide the next move; event callbacks inject discrete pulses (reward,
- * aversive, escape) directly into the network; and the 3D visualizer
- * reads `engine.state` — the network's own population activity — every
- * frame, read-only. Each module keeps its own render loop; this file only
- * runs a small periodic sync + HUD update, including the oscilloscope
- * telemetry graphs and the alertness ring.
- *
- * `FlyNeuralEngine.create()` is async (it fetches and parses
- * connectome.json), so the brain reference starts null and the arcade
- * renders immediately — Pac-Man simply won't move until the network has
- * loaded, which for a ~70KB JSON file is effectively instant.
- */
-
+/* Pac-Fly V2: wiring, researcher controls, and lightweight canvas telemetry. */
 (() => {
-  /** @type {FlyNeuralEngine|null} */
   let engine = null;
-  const fallbackState = {
-    headingAngle: 0, npfLevel: 0.2, dopamineTransient: 0, panicLevel: 0,
-    octopamineLevel: 0, arousalLevel: 0.1, ppl1Transient: 0,
-    giantFiberFiring: false, stunned: false, disgusted: false,
-    exhausted: false, behaviorState: 'GROOMING',
-  };
-  const engineState = () => (engine ? engine.state : fallbackState);
-
-  const arcadeCanvas = document.getElementById('arcade-canvas');
-  const game = new PacmanGame(arcadeCanvas, {
-    brainTick: (sense, dt) => (engine ? engine.update(dt, sense) : null),
-    onPelletEaten: (isEnergizer) => engine && engine.onPelletEaten(isEnergizer),
+  const fallback = { headingAngle: 0, npfLevel: .2, dopamineTransient: 0, panicLevel: 0, octopamineLevel: 0, arousalLevel: .1, ppl1Transient: 0, giantFiberFiring: false, disgusted: false, exhausted: false, behaviorState: 'GROOMING' };
+  const state = () => engine ? engine.state : fallback;
+  const game = new PacmanGame(document.getElementById('arcade-canvas'), {
+    brainTick: (sense, dt) => engine ? engine.update(dt, sense) : null,
+    onPelletEaten: kind => engine && engine.onPelletEaten(kind),
     onHazardEaten: () => engine && engine.onHazardEaten(),
     onCaught: () => engine && engine.onCaught(),
   });
-
   game.start();
-
-  FlyNeuralEngine.create('connectome.json')
-    .then((ready) => { engine = ready; })
-    .catch((err) => {
-      console.error('Pac-Fly: failed to load connectome.json — the fly has no brain and will not move.', err);
-      document.querySelector('.arcade-panel')?.classList.add('brain-load-failed');
-    });
-
-  // The 3D visualizer depends on Three.js loading from a CDN. If that
-  // fails (offline, blocked, slow network), the arcade game must keep
-  // running — it never depends on this module having succeeded.
-  let visualizer = null;
-  if (typeof THREE === 'undefined') {
-    console.warn('Pac-Fly: THREE.js did not load — running without the 3D connectome visualizer.');
-    document.querySelector('.brain-panel')?.classList.add('brain-unavailable');
-  } else {
-    try {
-      const brainCanvas = document.getElementById('brain-canvas');
-      visualizer = new BrainVisualizer(brainCanvas, engineState);
-      visualizer.start();
-    } catch (err) {
-      console.warn('Pac-Fly: BrainVisualizer failed to initialize — running without it.', err);
-      document.querySelector('.brain-panel')?.classList.add('brain-unavailable');
-    }
-  }
-
-  const hazardBtn = document.getElementById('btn-hazard-mode');
-  hazardBtn.addEventListener('click', () => {
-    const active = !game.hazardPlacementMode;
-    game.setHazardPlacementMode(active);
-    hazardBtn.classList.toggle('armed', active);
-    hazardBtn.textContent = active ? '◆ Click maze to place trap' : '+ Place Bitter Trap';
+  FlyNeuralEngine.create('connectome.json').then(value => { engine = value; }).catch(error => {
+    console.error('Pac-Fly: connectome failed to load.', error);
+    document.querySelector('.experiment-panel').dataset.error = 'connectome unavailable';
   });
 
-  // ---------------------------------------------------------------------
-  // Oscilloscope telemetry: small rolling history buffers, sampled at a
-  // fixed cadence (not every animation frame) so the traces read as a
-  // real scrolling waveform instead of noise.
-  // ---------------------------------------------------------------------
-
-  const HIST_LEN = 90;
-  const SAMPLE_MS = 110;
-  const history = {
-    hunger: new Array(HIST_LEN).fill(0),
-    panic: new Array(HIST_LEN).fill(0),
-    stress: new Array(HIST_LEN).fill(0),
-    dopamine: new Array(HIST_LEN).fill(0),
-    stamina: new Array(HIST_LEN).fill(1),
-  };
-  function pushHistory(s) {
-    history.hunger.push(s.npfLevel); history.hunger.shift();
-    history.panic.push(s.panicLevel); history.panic.shift();
-    history.stress.push(s.octopamineLevel); history.stress.shift();
-    history.dopamine.push(s.dopamineTransient); history.dopamine.shift();
-    history.stamina.push(game.stamina); history.stamina.shift();
+  if (typeof THREE !== 'undefined') {
+    try { const viz = new BrainVisualizer(document.getElementById('brain-canvas'), state); viz.start(); }
+    catch (error) { console.warn('Pac-Fly: brain viewport unavailable.', error); }
   }
 
-  function drawSparkline(canvas, values, color) {
-    const ctx = canvas.getContext('2d');
-    const w = canvas.width, h = canvas.height;
-    ctx.clearRect(0, 0, w, h);
-    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
-    ctx.beginPath(); ctx.moveTo(0, h / 2); ctx.lineTo(w, h / 2); ctx.stroke();
+  const $ = id => document.getElementById(id);
+  document.querySelectorAll('[data-tool]').forEach(button => button.addEventListener('click', () => {
+    const mode = button.dataset.tool;
+    game.setPlacementMode(mode);
+    document.querySelectorAll('[data-tool]').forEach(item => item.classList.toggle('active', item === button));
+    $('tool-status').textContent = mode === 'sugar' ? 'Click open tiles to add sugar' : 'Click open tiles to drop a bitter trap';
+  }));
+  $('clear-sugar').addEventListener('click', () => game.clearSugar());
+  $('fill-sugar').addEventListener('click', () => game.fillSugar());
+  $('fly-speed').addEventListener('input', event => { const v = Number(event.target.value); game.setFlySpeedScale(v); $('fly-speed-value').textContent = `${v.toFixed(1)}×`; });
+  $('ghost-speed').addEventListener('input', event => { const v = Number(event.target.value); game.setGhostSpeedScale(v); $('ghost-speed-value').textContent = `${v.toFixed(1)}×`; });
+  $('behavior-toggle').addEventListener('click', event => {
+    const prey = event.currentTarget.getAttribute('aria-pressed') !== 'true';
+    event.currentTarget.setAttribute('aria-pressed', String(prey));
+    game.setGhostBehavior(prey ? 'prey' : 'predator');
+    $('behavior-value').textContent = prey ? 'SUGAR / PREY' : 'PREDATORS';
+    $('arena-mode').textContent = prey ? 'PREY FIELD' : 'PREDATOR FIELD';
+  });
+  $('theme-toggle').addEventListener('click', event => {
+    document.body.classList.toggle('light');
+    const light = document.body.classList.contains('light');
+    event.currentTarget.textContent = light ? '☾' : '☼';
+    event.currentTarget.setAttribute('aria-label', light ? 'Switch to dark mode' : 'Switch to light mode');
+  });
 
-    const step = w / (values.length - 1);
-    ctx.beginPath();
-    values.forEach((v, i) => {
-      const x = i * step, y = h - Math.min(1, Math.max(0, v)) * (h - 6) - 3;
-      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-    });
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 1.6;
-    ctx.shadowColor = color;
-    ctx.shadowBlur = 6;
-    ctx.stroke();
-    ctx.shadowBlur = 0;
-
-    ctx.lineTo(w, h); ctx.lineTo(0, h); ctx.closePath();
-    const grad = ctx.createLinearGradient(0, 0, 0, h);
-    grad.addColorStop(0, color + '33');
-    grad.addColorStop(1, color + '00');
-    ctx.fillStyle = grad;
-    ctx.fill();
+  const history = [], timeline = [], maxHistory = 90;
+  const colors = { FORAGING: '#6df0a4', ESCAPE: '#ff5474', DISGUST: '#c285ff', EXHAUSTED: '#74808a', GROOMING: '#47d8e8', ALERT: '#e6f2f4' };
+  const clamp = value => Math.max(0, Math.min(1, value || 0));
+  function drawRadar(s) {
+    const canvas = $('drive-chart'), ctx = canvas.getContext('2d'), w = canvas.width, h = canvas.height, cx = w / 2, cy = h / 2 + 5, r = 57;
+    ctx.clearRect(0, 0, w, h); ctx.strokeStyle = 'rgba(128,180,190,.22)'; ctx.lineWidth = 1;
+    for (let ring = 1; ring <= 3; ring++) { ctx.beginPath(); for (let i = 0; i < 4; i++) { const a = -Math.PI / 2 + i * Math.PI / 2; const rr = r * ring / 3; const x = cx + Math.cos(a) * rr, y = cy + Math.sin(a) * rr; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); } ctx.closePath(); ctx.stroke(); }
+    const values = [clamp(s.npfLevel), clamp(s.panicLevel), clamp(.35 + s.arousalLevel * .45), clamp(1 - s.npfLevel)];
+    ctx.beginPath(); values.forEach((v, i) => { const a = -Math.PI / 2 + i * Math.PI / 2, x = cx + Math.cos(a) * r * v, y = cy + Math.sin(a) * r * v; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }); ctx.closePath(); ctx.fillStyle = 'rgba(109,240,164,.18)'; ctx.fill(); ctx.strokeStyle = '#6df0a4'; ctx.stroke();
+    ['FORAGE', 'ESCAPE', 'EXPLORE', 'REST'].forEach((label, i) => { const a = -Math.PI / 2 + i * Math.PI / 2; ctx.fillStyle = '#7d9aa3'; ctx.font = '10px DM Mono'; ctx.textAlign = 'center'; ctx.fillText(label, cx + Math.cos(a) * 76, cy + Math.sin(a) * 76 + 3); });
   }
-
-  const STATE_COLORS = {
-    ESCAPE: '#ff3355',
-    DISGUST: '#a020f0',
-    EXHAUSTED: '#8a8a94',
-    FORAGING: '#39ff88',
-    GROOMING: '#33e0ff',
-    ALERT: '#eaeaea',
-  };
-
-  function drawArousalRing(canvas, level, color) {
-    const ctx = canvas.getContext('2d');
-    const w = canvas.width, h = canvas.height;
-    const cx = w / 2, cy = h / 2, r = Math.min(w, h) / 2 - 8;
-    ctx.clearRect(0, 0, w, h);
-
-    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
-    ctx.lineWidth = 8;
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.stroke();
-
-    const start = -Math.PI / 2;
-    const end = start + Math.min(1, Math.max(0, level)) * Math.PI * 2;
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 8;
-    ctx.lineCap = 'round';
-    ctx.shadowColor = color;
-    ctx.shadowBlur = 10;
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, start, end);
-    ctx.stroke();
-    ctx.shadowBlur = 0;
+  function drawScatter(s) {
+    const c = $('scatter-chart'), ctx = c.getContext('2d'), w = c.width, h = c.height; ctx.clearRect(0, 0, w, h); ctx.strokeStyle = 'rgba(128,180,190,.2)'; ctx.beginPath(); ctx.moveTo(28, 10); ctx.lineTo(28, h - 20); ctx.lineTo(w - 8, h - 20); ctx.stroke();
+    const x = 28 + clamp(s.panicLevel) * (w - 44), y = h - 20 - clamp(s.dopamineTransient) * (h - 36), radius = 6 + clamp(s.arousalLevel) * 18; ctx.fillStyle = 'rgba(255,84,116,.22)'; ctx.strokeStyle = '#ff5474'; ctx.beginPath(); ctx.arc(x, y, radius, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.fillStyle = '#7d9aa3'; ctx.font = '9px DM Mono'; ctx.fillText('FEAR →', w - 46, h - 5); ctx.save(); ctx.translate(10, 80); ctx.rotate(-Math.PI / 2); ctx.fillText('DOPAMINE', 0, 0); ctx.restore();
   }
-
-  /** Satiation pie chart: filled fraction = 1 - hunger, red + blinking once starving. */
-  function drawHungerPie(canvas, npfLevel, now) {
-    const ctx = canvas.getContext('2d');
-    const w = canvas.width, h = canvas.height;
-    const cx = w / 2, cy = h / 2, r = Math.min(w, h) / 2 - 2;
-    const starving = npfLevel > 0.85;
-    const satiation = Math.min(1, Math.max(0, 1 - npfLevel));
-    const color = starving ? '#ff3355' : '#ff9a3c';
-
-    ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = 'rgba(255,255,255,0.06)';
-    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
-
-    const alpha = starving ? (0.5 + 0.5 * Math.sin(now / 140)) : 1;
-    ctx.globalAlpha = alpha;
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.moveTo(cx, cy);
-    ctx.arc(cx, cy, r, -Math.PI / 2, -Math.PI / 2 + satiation * Math.PI * 2);
-    ctx.closePath();
-    ctx.fill();
-    ctx.globalAlpha = 1;
+  function drawAvatar(s) {
+    const c = $('fly-avatar'), ctx = c.getContext('2d'), w = c.width, h = c.height, t = performance.now() / 300, active = s.behaviorState === 'ESCAPE' || s.giantFiberFiring, lean = Math.sin(t) * (active ? .2 : .06);
+    ctx.clearRect(0, 0, w, h); ctx.save(); ctx.translate(w / 2, h / 2 + 7); ctx.rotate(lean); ctx.fillStyle = 'rgba(90,210,230,.17)'; ctx.strokeStyle = '#74e9ee'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.ellipse(-25, -8, 28, 10, -.35, 0, Math.PI * 2); ctx.ellipse(25, -8, 28, 10, .35, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.fillStyle = active ? '#ff5474' : '#c3a16b'; ctx.beginPath(); ctx.ellipse(0, 5, 9, 24, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.fillStyle = '#e8f5f5'; ctx.beginPath(); ctx.arc(0, -16, 8, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#15252b'; ctx.beginPath(); ctx.arc(-3, -17, 2, 0, Math.PI * 2); ctx.arc(3, -17, 2, 0, Math.PI * 2); ctx.fill(); ctx.restore();
   }
-
-  const graphCanvases = {
-    hunger: document.getElementById('graph-npf'),
-    panic: document.getElementById('graph-panic'),
-    stress: document.getElementById('graph-stress'),
-    dopamine: document.getElementById('graph-dopamine'),
-    stamina: document.getElementById('graph-stamina'),
-  };
-  const graphColors = { hunger: '#ff9a3c', panic: '#ff3355', stress: '#ff5577', dopamine: '#ffb800', stamina: '#33e0ff' };
-  const ringCanvas = document.getElementById('arousal-ring');
-  const hungerPieCanvas = document.getElementById('hunger-pie');
-
-  // Scrolling "State: X -> State: Y" transition log, most recent last.
-  const stateLog = [];
-  let lastLoggedState = null;
-
-  const els = {
-    valNpf: document.getElementById('val-npf'),
-    valPanic: document.getElementById('val-panic'),
-    valStress: document.getElementById('val-stress'),
-    valDopamine: document.getElementById('val-dopamine'),
-    valStamina: document.getElementById('val-stamina'),
-    gfStatus: document.getElementById('gf-status'),
-    score: document.getElementById('stat-score'),
-    lives: document.getElementById('stat-lives'),
-    heading: document.getElementById('stat-heading'),
-    arousalPct: document.getElementById('arousal-pct'),
-    stateTicker: document.getElementById('state-ticker'),
-    stateLog: document.getElementById('state-log'),
-    disgustFlag: document.getElementById('disgust-flag'),
-    hungerCard: document.querySelector('.graph-card[data-metric="hunger"]'),
-  };
-
-  let lastTime = performance.now();
-  let sampleAccum = 0;
-
-  function syncLoop(now) {
-    const dt = Math.min(0.05, (now - lastTime) / 1000);
-    lastTime = now;
-
-    if (engine) {
-      game.setSprintActive(engine.isGiantFiberFiring());
-      engine.setExhausted(game.exhausted);
-    }
-
-    const s = engineState();
-
-    sampleAccum += dt * 1000;
-    if (sampleAccum >= SAMPLE_MS) {
-      sampleAccum = 0;
-      pushHistory(s);
-      drawSparkline(graphCanvases.hunger, history.hunger, graphColors.hunger);
-      drawSparkline(graphCanvases.panic, history.panic, graphColors.panic);
-      drawSparkline(graphCanvases.stress, history.stress, graphColors.stress);
-      drawSparkline(graphCanvases.dopamine, history.dopamine, graphColors.dopamine);
-      drawSparkline(graphCanvases.stamina, history.stamina, graphColors.stamina);
-    }
-
-    const stateColor = STATE_COLORS[s.behaviorState] || '#33e0ff';
-    drawArousalRing(ringCanvas, s.arousalLevel, stateColor);
-    drawHungerPie(hungerPieCanvas, s.npfLevel, now);
-
-    if (s.behaviorState !== lastLoggedState) {
-      stateLog.push(s.behaviorState);
-      if (stateLog.length > 6) stateLog.shift();
-      lastLoggedState = s.behaviorState;
-      els.stateLog.textContent = stateLog.map((st) => `State: ${st}`).join(' ➔ ');
-    }
-
-    els.valNpf.textContent = `${Math.round(s.npfLevel * 100)}%`;
-    els.valPanic.textContent = `${Math.round(s.panicLevel * 100)}%`;
-    els.valStress.textContent = `${Math.round(s.octopamineLevel * 100)}%`;
-    els.valDopamine.textContent = `${Math.round(s.dopamineTransient * 100)}%`;
-    els.valStamina.textContent = `${Math.round(game.stamina * 100)}%`;
-    els.hungerCard.classList.toggle('critical', s.npfLevel > 0.85);
-
-    els.gfStatus.textContent = s.giantFiberFiring ? 'FIRING' : 'idle';
-    els.gfStatus.className = s.giantFiberFiring ? 'gf-status gf-firing' : 'gf-status';
-
-    els.score.textContent = game.score;
-    els.lives.textContent = game.lives;
-    els.heading.textContent = `${Math.round((s.headingAngle * 180) / Math.PI)}°`;
-
-    els.arousalPct.textContent = `${Math.round(s.arousalLevel * 100)}%`;
-    els.stateTicker.textContent = s.behaviorState;
-    els.stateTicker.dataset.state = s.behaviorState;
-    els.disgustFlag.hidden = !s.disgusted;
-
-    requestAnimationFrame(syncLoop);
+  let last = performance.now(), sample = 0, lastState = '';
+  function loop(now) {
+    const dt = Math.min(.05, (now - last) / 1000); last = now; sample += dt * 1000; const s = state();
+    if (engine) { game.setSprintActive(engine.isGiantFiberFiring()); engine.setExhausted(game.exhausted); }
+    if (sample > 140) { sample = 0; history.push(s); if (history.length > maxHistory) history.shift(); timeline.push(s.behaviorState); if (timeline.length > 72) timeline.shift(); $('timeline-strip').innerHTML = timeline.map(item => `<i data-state="${item}" title="${item}"></i>`).join(''); }
+    $('val-npf').textContent = `${Math.round(s.npfLevel * 100)}%`; $('val-panic').textContent = `${Math.round(s.panicLevel * 100)}%`; $('val-dopamine').textContent = `${Math.round(s.dopamineTransient * 100)}%`; $('val-stamina').textContent = `${Math.round(game.stamina * 100)}%`;
+    $('meter-npf').style.width = `${clamp(s.npfLevel) * 100}%`; $('meter-panic').style.width = `${clamp(s.panicLevel) * 100}%`; $('meter-dopamine').style.width = `${clamp(s.dopamineTransient) * 100}%`; $('meter-stamina').style.width = `${clamp(game.stamina) * 100}%`;
+    $('state-ticker').textContent = s.behaviorState; $('state-ticker').style.color = colors[s.behaviorState] || colors.ALERT; $('state-log').textContent = lastState === s.behaviorState ? $('state-log').textContent : `${lastState || 'BOOT'} → ${s.behaviorState}`; lastState = s.behaviorState;
+    $('arousal-pct').textContent = `${Math.round(s.arousalLevel * 100)}%`; $('motor-action').textContent = `HEADING ${Math.round(s.headingAngle * 180 / Math.PI)}°`; $('gf-status').textContent = `GIANT FIBER · ${s.giantFiberFiring ? 'FIRING' : 'IDLE'}`; $('disgust-flag').textContent = s.disgusted ? 'PPL1 AVERSIVE' : 'PPL1 QUIET'; $('stat-score').textContent = game.score; $('stat-lives').textContent = game.lives;
+    drawRadar(s); drawScatter(s); drawAvatar(s); requestAnimationFrame(loop);
   }
-  requestAnimationFrame(syncLoop);
+  requestAnimationFrame(loop);
 })();

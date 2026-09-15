@@ -6,6 +6,21 @@ Pac-Man does not take player input. He is not driven by a distance-scoring heuri
 
 Zero build step. Open `index.html` and it runs.
 
+## V2 research console
+
+The V2 interface is a non-scrolling three-column research console. The arena
+uses a compact 12px logical tile scale so the complete 28x31 maze remains
+visible beside the brain and telemetry panels. God Mode supports click-to-place
+sugar and bitter traps, clearing or filling sugar, predator versus prey ghost
+behavior, and independent fly and ghost speed scaling. A light-mode toggle
+preserves the same hierarchy with clinical high-contrast colors.
+
+Telemetry includes a drive-balance radar, fear-versus-dopamine bubble plot
+(bubble radius is arousal), and a color-coded behavioral state timeline. Hunger
+is driven by the NPF population's continuous metabolic input and is reduced
+only by a sugar-eaten event. The motor readout includes a synchronized canvas
+fly avatar whose posture responds to the live heading and escape state.
+
 ---
 
 ## What this actually is

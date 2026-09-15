@@ -1,132 +1,68 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Pac-Fly — Arcade Connectome</title>
-<meta name="description" content="A pixel-accurate 1980 arcade Pac-Man engine wired to a real-time 3D Drosophila connectome visualizer.">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🟡</text></svg>">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Pac-Fly V2 | Connectome Research Console</title>
+  <meta name="description" content="A dense, connectome-driven Pac-Man research dashboard.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<a class="skip-link" href="#arcade-canvas">Skip to arcade</a>
+  <header class="topbar">
+    <div class="brand"><span class="brand-mark">◎</span><div><h1>PAC-FLY <b>V2</b></h1><p>CONNECTOME RESEARCH CONSOLE <i>• LIVE</i></p></div></div>
+    <div class="top-actions"><span class="session-badge">SESSION 0042</span><button id="theme-toggle" class="icon-btn" type="button" aria-label="Switch to light mode">☼</button></div>
+  </header>
 
-<header class="app-header">
-  <div class="brand">
-    <span class="brand-glyph" aria-hidden="true">🟡</span>
-    <div class="brand-text">
-      <h1>PAC-FLY</h1>
-      <p class="brand-sub">Arcade Engine × Drosophila Connectome</p>
-    </div>
-  </div>
-  <div class="header-stats" role="status" aria-live="polite">
-    <div class="stat"><span class="stat-label">Score</span><span class="stat-value" id="stat-score">0</span></div>
-    <div class="stat"><span class="stat-label">Lives</span><span class="stat-value" id="stat-lives">3</span></div>
-    <div class="stat"><span class="stat-label">Heading</span><span class="stat-value" id="stat-heading">0°</span></div>
-  </div>
-</header>
-
-<main class="lab-grid">
-
-  <section class="arcade-panel" aria-label="Arcade">
-    <div class="panel-heading">
-      <h2>Arcade</h2>
-      <span class="panel-tag">autonomous — brain-driven, no player control</span>
-    </div>
-    <div class="canvas-wrap">
-      <canvas id="arcade-canvas" role="img" aria-label="Classic Pac-Man arcade maze, rendered live"></canvas>
-    </div>
-    <button id="btn-hazard-mode" class="lab-btn lab-btn-full" type="button">+ Place Bitter Trap</button>
-    <p class="hint">Bitter traps spike the PPL1 aversive circuit and briefly stun Pac-Man on contact (Gr66a gustatory reflex).</p>
-  </section>
-
-  <aside class="brain-panel" aria-label="3D connectome visualizer">
-    <div class="panel-heading">
-      <h2>Live Connectome</h2>
-      <span class="panel-tag">drag to orbit</span>
-    </div>
-    <div class="brain-canvas-wrap">
-      <canvas id="brain-canvas"></canvas>
-    </div>
-
-    <div class="mood-row">
-      <div class="arousal-ring-wrap">
-        <canvas id="arousal-ring" width="108" height="108"></canvas>
-        <div class="arousal-center">
-          <span class="arousal-pct" id="arousal-pct">0%</span>
-          <span class="arousal-caption">ALERT</span>
+  <main class="dashboard">
+    <section class="panel experiment-panel">
+      <div class="panel-head"><div><span class="eyebrow">EXPERIMENT / 01</span><h2>Closed-loop arena</h2></div><span class="live-dot">● AUTONOMOUS</span></div>
+      <div class="arena-shell"><canvas id="arcade-canvas" role="img" aria-label="Connectome-controlled maze"></canvas><div class="arena-overlay"><span>28 × 31 GRID</span><span id="arena-mode">PREDATOR FIELD</span></div></div>
+      <div class="god-mode">
+        <div class="control-title"><span>GOD MODE</span><small id="tool-status">Select a tool, then click the arena</small></div>
+        <div class="tool-row"><button class="tool-btn active" data-tool="sugar" type="button">+ Sugar</button><button class="tool-btn" data-tool="trap" type="button">◆ Bitter trap</button><button id="clear-sugar" class="tool-btn ghost" type="button">Clear sugar</button><button id="fill-sugar" class="tool-btn ghost" type="button">Fill map</button></div>
+        <div class="control-grid">
+          <label>Fly speed <output id="fly-speed-value">1.0×</output><input id="fly-speed" type="range" min=".35" max="2" step=".05" value="1"></label>
+          <label>Ghost speed <output id="ghost-speed-value">1.0×</output><input id="ghost-speed" type="range" min=".35" max="2" step=".05" value="1"></label>
+          <label class="switch-label">Ghost behavior <output id="behavior-value">PREDATORS</output><button id="behavior-toggle" class="switch" type="button" aria-pressed="false"><span></span></button></label>
         </div>
       </div>
-      <div class="state-ticker-wrap">
-        <span class="state-ticker-label">Drive State</span>
-        <div class="state-ticker" id="state-ticker" data-state="GROOMING">GROOMING</div>
-        <div class="state-log" id="state-log" aria-label="Recent drive state transitions"></div>
-        <div class="disgust-flag" id="disgust-flag" hidden>🤢 Bitter trap detected — Gr66a triggered</div>
+    </section>
+
+    <section class="panel brain-panel">
+      <div class="panel-head"><div><span class="eyebrow">NEURAL IMAGING / 02</span><h2>Live connectome</h2></div><span class="panel-note">GCaMP • 66 nodes</span></div>
+      <div class="brain-viewport"><canvas id="brain-canvas"></canvas><span class="viewport-label">TWO-PHOTON ACTIVITY</span></div>
+      <div class="state-strip"><div><span class="eyebrow">CURRENT STATE</span><strong id="state-ticker">GROOMING</strong><small id="state-log">awaiting transitions</small></div><div class="alert-ring"><span id="arousal-pct">0%</span><small>AROUSAL</small></div></div>
+      <div class="avatar-card"><div><span class="eyebrow">MOTOR READOUT</span><strong id="motor-action">HEADING 0°</strong><small id="motor-sub">fly avatar • synchronized</small></div><canvas id="fly-avatar" width="180" height="100" aria-label="Live 3D fly avatar"></canvas></div>
+    </section>
+
+    <aside class="panel telemetry-panel">
+      <div class="panel-head"><div><span class="eyebrow">TELEMETRY / 03</span><h2>Behavioral signals</h2></div><span class="panel-note">rolling 90 s</span></div>
+      <div class="metric-grid">
+        <div class="metric"><span>HUNGER / NPF</span><b id="val-npf">0%</b><div class="meter"><i id="meter-npf"></i></div></div>
+        <div class="metric"><span>FEAR / GF</span><b id="val-panic">0%</b><div class="meter red"><i id="meter-panic"></i></div></div>
+        <div class="metric"><span>DOPAMINE / PAM</span><b id="val-dopamine">0%</b><div class="meter gold"><i id="meter-dopamine"></i></div></div>
+        <div class="metric"><span>STAMINA</span><b id="val-stamina">100%</b><div class="meter cyan"><i id="meter-stamina"></i></div></div>
       </div>
-    </div>
+      <div class="chart-block"><div class="chart-head"><span>DRIVE BALANCE</span><small>current neural motivation</small></div><canvas id="drive-chart" width="420" height="170"></canvas><div class="chart-legend"><span class="green">● FORAGE</span><span class="red">● ESCAPE</span><span class="cyan">● EXPLORE</span><span class="gold">● REST</span></div></div>
+      <div class="chart-block"><div class="chart-head"><span>FEAR × DOPAMINE</span><small>bubble = arousal</small></div><canvas id="scatter-chart" width="420" height="140"></canvas></div>
+      <div class="chart-block timeline"><div class="chart-head"><span>BEHAVIORAL TIMELINE</span><small>state occupancy</small></div><div id="timeline-strip" class="timeline-strip"></div><div class="timeline-labels"><span>−90 s</span><span>now</span></div></div>
+      <div class="telemetry-footer"><span id="gf-status">GIANT FIBER · IDLE</span><span id="disgust-flag">PPL1 QUIET</span></div>
+    </aside>
+  </main>
 
-    <div class="telem-graphs">
-      <article class="graph-card graph-card-split" data-metric="hunger">
-        <header><span class="graph-label">Hunger · NPF</span><span class="graph-value" id="val-npf">0%</span></header>
-        <div class="graph-split-row">
-          <canvas class="graph-canvas" id="graph-npf" width="230" height="48"></canvas>
-          <canvas id="hunger-pie" width="44" height="44" aria-label="Satiation pie chart"></canvas>
-        </div>
-      </article>
-      <article class="graph-card" data-metric="panic">
-        <header><span class="graph-label">Panic · LC4/GF Looming</span><span class="graph-value" id="val-panic">0%</span></header>
-        <canvas class="graph-canvas" id="graph-panic" width="300" height="48"></canvas>
-      </article>
-      <article class="graph-card" data-metric="stress">
-        <header><span class="graph-label">Octopamine · Stress</span><span class="graph-value" id="val-stress">0%</span></header>
-        <canvas class="graph-canvas" id="graph-stress" width="300" height="48"></canvas>
-      </article>
-      <article class="graph-card" data-metric="dopamine">
-        <header><span class="graph-label">PAM/MBON · Dopamine</span><span class="graph-value" id="val-dopamine">0%</span></header>
-        <canvas class="graph-canvas" id="graph-dopamine" width="300" height="48"></canvas>
-      </article>
-      <article class="graph-card" data-metric="stamina">
-        <header><span class="graph-label">Stamina</span><span class="graph-value" id="val-stamina">100%</span></header>
-        <canvas class="graph-canvas" id="graph-stamina" width="300" height="48"></canvas>
-      </article>
-    </div>
+  <footer>PRUNED FUNCTIONAL MAPPING · NOT A LITERAL FLYWIRE GRAPH · <a href="README.md">METHODS</a><span id="stat-score">0</span> SCORE <span id="stat-lives">3</span> LIVES</footer>
 
-    <div class="gf-block">
-      <span class="gf-label">Giant Fiber Escape</span>
-      <span class="gf-status" id="gf-status">idle</span>
-    </div>
-
-    <div class="circuit-legend">
-      <div><span class="dot" style="background:#33e0ff"></span> Ellipsoid Body / Giant Fiber</div>
-      <div><span class="dot" style="background:#ffb800"></span> Mushroom Body / PAM</div>
-      <div><span class="dot" style="background:#a020f0"></span> PPL1 aversive</div>
-    </div>
-  </aside>
-
-</main>
-
-<footer class="app-footer">
-  <span>Pruned functional mapping — not a literal FlyWire graph. See README.</span>
-</footer>
-
-<!-- Three.js r128 (classic global build) + example passes/controls, pinned. -->
-<script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
-<script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-<script src="https://unpkg.com/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
-<script src="https://unpkg.com/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
-<script src="https://unpkg.com/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
-<script src="https://unpkg.com/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
-<script src="https://unpkg.com/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
-<script src="https://unpkg.com/three@0.128.0/examples/js/postprocessing/MaskPass.js"></script>
-<script src="https://unpkg.com/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
-
-<script src="PacmanGame.js"></script>
-<script src="Connectome.js"></script>
-<script src="FlyNeuralEngine.js"></script>
-<script src="BrainVisualizer.js"></script>
-<script src="main.js"></script>
+  <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+  <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://unpkg.com/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+  <script src="https://unpkg.com/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+  <script src="https://unpkg.com/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+  <script src="https://unpkg.com/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+  <script src="https://unpkg.com/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+  <script src="https://unpkg.com/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+  <script src="PacmanGame.js"></script><script src="Connectome.js"></script><script src="FlyNeuralEngine.js"></script><script src="BrainVisualizer.js"></script><script src="main.js"></script>
 </body>
 </html>

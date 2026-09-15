@@ -94,7 +94,9 @@ class PacmanGame {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
     this.callbacks = callbacks;
-    this.tile = 16;
+    // The logical board stays dense (28 x 31); a compact tile keeps the
+    // complete experiment visible alongside the telemetry panels.
+    this.tile = 12;
 
     canvas.width = GRID_W * this.tile;
     canvas.height = PLAYFIELD_ROWS * this.tile;
@@ -109,6 +111,10 @@ class PacmanGame {
     this.sprintActive = false;
     this.stamina = 1.0;
     this.hazardPlacementMode = false;
+    this.placementMode = 'trap';
+    this.ghostBehavior = 'predator';
+    this.flySpeedScale = 1;
+    this.ghostSpeedScale = 1;
     this.catchFlashUntil = 0;
     this._invulnerableUntil = 0;
     this.exhausted = false;
@@ -201,23 +207,74 @@ class PacmanGame {
     // Pac-Man is not player-controlled — he has his own brain. The only
     // human input this game accepts is placing bitter traps in the maze.
     this.canvas.addEventListener('click', (evt) => {
-      if (!this.hazardPlacementMode) return;
+      if (!this.hazardPlacementMode && this.placementMode !== 'sugar') return;
       const rect = this.canvas.getBoundingClientRect();
       const scaleX = this.canvas.width / rect.width, scaleY = this.canvas.height / rect.height;
       const x = (evt.clientX - rect.left) * scaleX, y = (evt.clientY - rect.top) * scaleY;
       const col = Math.floor(x / this.tile);
       const row = Math.floor(y / this.tile) + PLAYFIELD_TOP;
-      this.placeHazard(row, col);
+      if (this.placementMode === 'sugar') this.placeSugar(row, col);
+      else this.placeHazard(row, col);
     });
   }
 
   setHazardPlacementMode(active) { this.hazardPlacementMode = active; }
+
+  setPlacementMode(mode) {
+    if (mode !== 'sugar' && mode !== 'trap') throw new Error(`Unknown placement mode: ${mode}`);
+    this.placementMode = mode;
+    this.hazardPlacementMode = mode === 'trap';
+  }
+
+  setGhostBehavior(mode) {
+    if (mode !== 'predator' && mode !== 'prey') throw new Error(`Unknown ghost behavior: ${mode}`);
+    this.ghostBehavior = mode;
+  }
+
+  setFlySpeedScale(value) { this.flySpeedScale = Math.max(0.35, Math.min(2, Number(value))); }
+  setGhostSpeedScale(value) { this.ghostSpeedScale = Math.max(0.35, Math.min(2, Number(value))); }
+
+  clearSugar() {
+    for (const [key, kind] of this.pellets) {
+      if (kind === 'normal') this.pellets.delete(key);
+    }
+  }
+
+  fillSugar() {
+    for (let row = PLAYFIELD_TOP; row < PLAYFIELD_TOP + PLAYFIELD_ROWS; row++) {
+      for (let col = 0; col < GRID_W; col++) {
+        if (this.isFloor(row, col) && !this.hazards.has(`${row},${col}`)) {
+          this.pellets.set(`${row},${col}`, 'normal');
+        }
+      }
+    }
+  }
 
   placeHazard(row, col) {
     if (!this.isFloor(row, col)) return false;
     const key = `${row},${col}`;
     if (this.pellets.has(key) && this.pellets.get(key) !== 'normal') return false;
     this.hazards.set(key, true);
+    this.pellets.delete(key);
+    // A bitter trap is an immediate environmental intervention, not a
+    // delayed collision: remove a ghost occupying the affected tile.
+    for (const ghost of this.ghosts) {
+      if (Math.round(ghost.row) === row && Math.round(ghost.col) === col) {
+        ghost.inHouse = true;
+        ghost.row = 17;
+        ghost.col = 13;
+        ghost.moveT = 0;
+        ghost.leaveAt = performance.now() + 1800;
+      }
+    }
+    return true;
+  }
+
+  placeSugar(row, col) {
+    if (!this.isFloor(row, col)) return false;
+    const key = `${row},${col}`;
+    if (this.hazards.has(key)) this.hazards.delete(key);
+    this.pellets.set(key, 'normal');
     return true;
   }
 
@@ -268,7 +325,7 @@ class PacmanGame {
         continue;
       }
       this._updateGhostTarget(g);
-      this._updateActorMovement(g, dt, g.speed, false);
+      this._updateActorMovement(g, dt, g.speed * this.ghostSpeedScale, false);
     }
 
     this._checkGhostCollision(now);
@@ -284,10 +341,10 @@ class PacmanGame {
 
     if (this.sprintActive && this.stamina > 0.02) {
       this.stamina = Math.max(0, this.stamina - dt * 0.5);
-      return this.pac.speed * 1.6;
+      return this.pac.speed * this.flySpeedScale * 1.6;
     }
     this.stamina = Math.min(1, this.stamina + dt * (this.exhausted ? 0.18 : 0.25));
-    return this.exhausted ? this.pac.speed * 0.45 : this.pac.speed;
+    return (this.exhausted ? this.pac.speed * 0.45 : this.pac.speed) * this.flySpeedScale;
   }
 
   /**
@@ -482,7 +539,12 @@ class PacmanGame {
     const pacDir = DIRS[pac.dir];
     let target;
 
-    if (g.name === 'blinky') {
+    if (this.ghostBehavior === 'prey') {
+      // Prey ghosts flee from the fly by targeting the opposite vector.
+      const awayRow = g.row + (g.row - pacRow) * 8;
+      const awayCol = g.col + (g.col - pacCol) * 8;
+      target = { row: awayRow, col: awayCol };
+    } else if (g.name === 'blinky') {
       target = { row: pacRow, col: pacCol };
     } else if (g.name === 'pinky') {
       target = { row: pacRow + pacDir.dy * 4, col: pacCol + pacDir.dx * 4 };

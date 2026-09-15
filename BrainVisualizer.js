@@ -79,6 +79,34 @@ class BrainVisualizer {
     this.scene.add(group);
     this.root = group;
 
+    // A dense point cloud gives the viewport the crisp-center / diffuse-halo
+    // character of two-photon calcium imaging instead of solid cartoon nodes.
+    const neuronPositions = [];
+    for (let i = 0; i < 150; i++) {
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(2 * Math.random() - 1);
+      const radius = 0.35 + Math.random() * 1.35;
+      neuronPositions.push(
+        Math.sin(phi) * Math.cos(theta) * radius * 1.15,
+        Math.cos(phi) * radius * 0.82,
+        Math.sin(phi) * Math.sin(theta) * radius * 0.68
+      );
+    }
+    const neuronGeometry = new THREE.BufferGeometry();
+    neuronGeometry.setAttribute('position', new THREE.Float32BufferAttribute(neuronPositions, 3));
+    const neuronMaterial = new THREE.PointsMaterial({
+      color: 0x7de8ff,
+      size: 0.055,
+      transparent: true,
+      opacity: 0.3,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      sizeAttenuation: true,
+    });
+    const neuronCloud = new THREE.Points(neuronGeometry, neuronMaterial);
+    group.add(neuronCloud);
+    this.neuronCloud = neuronCloud;
+
     // --- Ellipsoid Body: a toroidal ring + one orbiting "phase bump" ---
     const ebGroup = new THREE.Group();
     ebGroup.position.set(0, 1.6, 0);
@@ -221,6 +249,11 @@ class BrainVisualizer {
     // reads as a brighter, more "lit up" viewport, a distracted/calm one dims.
     if (this.ambientLight) {
       this.ambientLight.intensity = 1.0 + (state.arousalLevel || 0) * 0.9;
+    }
+    if (this.neuronCloud) {
+      this.neuronCloud.material.opacity = 0.18 + (state.arousalLevel || 0) * 0.62;
+      this.neuronCloud.material.size = 0.045 + (state.panicLevel || 0) * 0.04;
+      this.neuronCloud.rotation.y += dt * 0.08;
     }
   }
 
