@@ -42,9 +42,12 @@ Drag to orbit (`OrbitControls`, with slow auto-rotate when idle). All of it is d
 
 ## Controls
 
-- **Arrow keys / WASD** — move Pac-Man (turns only take effect at tile centers, same as the arcade)
-- **`+ Place Bitter Trap`** — arms hazard-placement mode; click any open floor tile in the maze to drop one
+Pac-Man is **not player-controlled.** He has his own brain — the whole point of Pac-Fly is watching it drive him. At every tile intersection he weighs two pressures: flee the nearest ghost if it's close (with the same erratic zig-zag noise the Giant Fiber escape reflex produces), otherwise greedily close in on the nearest pellet as sugar. You don't move him; you only act on his environment:
+
+- **`+ Place Bitter Trap`** — arms hazard-placement mode; click any open floor tile in the maze to drop one. Pac-Man mostly routes around known traps, but a fresh one can still catch him off guard.
 - **Drag** on the 3D viewport — orbit the camera
+
+Ghosts, meanwhile, run the real classic arcade AI (see below) — nothing in this project takes keyboard input for movement.
 
 ## Stack
 
