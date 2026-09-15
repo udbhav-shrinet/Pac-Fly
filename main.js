@@ -47,6 +47,45 @@
   }
 
   const $ = id => document.getElementById(id);
+  const audio = { context: null, gain: null, volume: .55 };
+  const pianoNotes = [261.63, 277.18, 293.66, 311.13, 329.63, 349.23, 369.99, 392, 415.3, 440, 466.16, 493.88, 523.25];
+  function playPianoNote(index) {
+    audio.context ||= new (window.AudioContext || window.webkitAudioContext)();
+    audio.gain ||= audio.context.createGain();
+    audio.gain.gain.value = audio.volume;
+    audio.gain.connect(audio.context.destination);
+    const oscillator = audio.context.createOscillator();
+    const envelope = audio.context.createGain();
+    oscillator.type = 'triangle';
+    oscillator.frequency.value = pianoNotes[index % pianoNotes.length];
+    envelope.gain.setValueAtTime(.0001, audio.context.currentTime);
+    envelope.gain.exponentialRampToValueAtTime(.28, audio.context.currentTime + .015);
+    envelope.gain.exponentialRampToValueAtTime(.0001, audio.context.currentTime + .65);
+    oscillator.connect(envelope).connect(audio.gain);
+    oscillator.start();
+    oscillator.stop(audio.context.currentTime + .7);
+  }
+  const keyRack = $('piano-keys');
+  pianoNotes.forEach((note, index) => {
+    const key = document.createElement('button');
+    key.type = 'button';
+    key.setAttribute('aria-label', `Piano key ${index + 1}`);
+    key.addEventListener('pointerdown', () => playPianoNote(index));
+    keyRack.appendChild(key);
+  });
+  $('piano-volume').addEventListener('input', event => {
+    audio.volume = Number(event.target.value);
+    if (audio.gain) audio.gain.gain.value = audio.volume;
+  });
+  let songIndex = 0;
+  const songs = [['Waving Flag', 'K’naan'], ['Merry Christmas Mr. Lawrence', 'Ryuichi Sakamoto'], ['Weightless', 'Marconi Union']];
+  function changeSong(direction) {
+    songIndex = (songIndex + direction + songs.length) % songs.length;
+    $('song-title').innerHTML = `${songs[songIndex][0]} <em>— ${songs[songIndex][1]}</em>`;
+    $('session-time').textContent = '00:00';
+  }
+  $('previous-song').addEventListener('click', () => changeSong(-1));
+  $('next-song').addEventListener('click', () => changeSong(1));
   $('brain-rotate').addEventListener('click', event => {
     const active = event.currentTarget.classList.toggle('active');
     viz && viz.setAutoRotate(active);
