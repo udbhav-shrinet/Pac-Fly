@@ -146,6 +146,22 @@
     ctx.lineWidth = 2;
     ctx.strokeStyle = key === 'panicLevel' ? '#ff5474' : key === 'dopamineTransient' ? '#ffc857' : '#47d8e8';
     ctx.stroke();
+    ctx.lineTo(20 + (points.length - 1) * (w - 28) / Math.max(1, points.length - 1), h - 10);
+    ctx.lineTo(20, h - 10);
+    ctx.closePath();
+    const fill = ctx.createLinearGradient(0, 0, 0, h);
+    fill.addColorStop(0, key === 'panicLevel' ? 'rgba(255,84,116,.25)' : 'rgba(71,216,232,.22)');
+    fill.addColorStop(1, 'rgba(71,216,232,0)');
+    ctx.fillStyle = fill;
+    ctx.fill();
+    ctx.beginPath();
+    points.forEach((value, index) => {
+      const x = 20 + index * (w - 28) / Math.max(1, points.length - 1);
+      const y = h - 10 - value * (h - 20);
+      index ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+    });
+    ctx.strokeStyle = key === 'panicLevel' ? '#ff5474' : key === 'dopamineTransient' ? '#ffc857' : '#47d8e8';
+    ctx.stroke();
   }
   function drawAvatar(s) {
     const c = $('fly-avatar'), ctx = c.getContext('2d'), w = c.width, h = c.height, t = performance.now() / 300, active = s.behaviorState === 'ESCAPE' || s.giantFiberFiring, lean = Math.sin(t) * (active ? .2 : .06);

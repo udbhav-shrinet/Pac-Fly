@@ -109,7 +109,13 @@ class FullBrainBridge {
       + this._activity('MECH_JO')
       + this._activity('OLF_ORN_DANGER');
     const reverse = this._activity('GUS_GRN_BITTER');
-    return { left: turn, right: turn, forward: walk, reverse: reverse + flee, rest: walk === 0 && flee === 0 };
+    // The aggregated FlyWire artifact does not expose left/right motor
+    // labels. Equal turn scores previously made the arena repeatedly choose
+    // a turn at every junction. Preserve exploratory turn energy, but give
+    // symmetric activity a forward-biased motor output so the fly traverses
+    // the map instead of spinning in place.
+    const forward = walk + turn * 0.8;
+    return { left: turn * 0.12, right: turn * 0.12, forward, reverse: reverse + flee, rest: forward < 0.08 && flee === 0 };
   }
 
   get state() {
