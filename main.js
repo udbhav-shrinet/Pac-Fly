@@ -32,12 +32,23 @@
     document.querySelector('.experiment-panel').dataset.error = 'connectome unavailable';
   });
 
+  let viz = null;
   if (typeof THREE !== 'undefined') {
-    try { const viz = new BrainVisualizer(document.getElementById('brain-canvas'), state); viz.start(); }
+    try { viz = new BrainVisualizer(document.getElementById('brain-canvas'), state); viz.start(); }
     catch (error) { console.warn('Pac-Fly: brain viewport unavailable.', error); }
   }
 
   const $ = id => document.getElementById(id);
+  $('brain-rotate').addEventListener('click', event => {
+    const active = event.currentTarget.classList.toggle('active');
+    viz && viz.setAutoRotate(active);
+  });
+  $('brain-fibers').addEventListener('click', event => {
+    const active = !event.currentTarget.classList.contains('active');
+    event.currentTarget.classList.toggle('active', active);
+    viz && viz.setFibersVisible(active);
+  });
+  $('brain-reset').addEventListener('click', () => viz && viz.resetCamera());
   document.querySelectorAll('.view-tab').forEach(tab => tab.addEventListener('click', () => {
     const view = tab.dataset.view;
     document.querySelectorAll('.view-tab').forEach(item => item.classList.toggle('active', item === tab));

@@ -242,11 +242,27 @@ class BrainVisualizer {
       this.composer = null; // graceful fallback: plain renderer.render()
       return;
     }
+
     this.composer = new THREE.EffectComposer(this.renderer);
     this.composer.addPass(new THREE.RenderPass(this.scene, this.camera));
     const bloom = new THREE.UnrealBloomPass(new THREE.Vector2(width, height), 1.1, 0.6, 0.15);
     this.composer.addPass(bloom);
     this.bloomPass = bloom;
+  }
+
+  setAutoRotate(active) {
+    if (this.controls) this.controls.autoRotate = Boolean(active);
+  }
+
+  resetCamera() {
+    if (!this.controls) return;
+    this.camera.position.set(0, 1.6, 6.5);
+    this.controls.target.set(0, 0, 0);
+    this.controls.update();
+  }
+
+  setFibersVisible(visible) {
+    if (this.imagingField) this.imagingField.fibers.visible = Boolean(visible);
   }
 
   _onResize() {
