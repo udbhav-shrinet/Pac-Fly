@@ -5,24 +5,31 @@
 }
 *{box-sizing:border-box}
 html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font-family:"Space Grotesk",sans-serif;-webkit-font-smoothing:antialiased}
+body{background:radial-gradient(ellipse 900px 500px at 50% -10%,#20180f 0%,var(--bg) 60%)}
 button{font:inherit;cursor:pointer;background:none}
-.stage{width:min(760px,100%);margin:auto;padding:48px 22px 64px;display:flex;flex-direction:column;gap:40px}
+.stage{width:min(760px,100%);margin:auto;padding:56px 22px 72px;display:flex;flex-direction:column;gap:36px}
 
-.top{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
-.title h1{margin:0;font-size:15px;font-weight:600;letter-spacing:.22em}
-.title p{margin:6px 0 0;font:11px "DM Mono",monospace;color:var(--muted)}
+.top{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;padding-bottom:20px;border-bottom:1px solid var(--line)}
+.title h1{margin:0;font-size:16px;font-weight:600;letter-spacing:.26em}
+.title p{margin:7px 0 0;font:11px "DM Mono",monospace;color:var(--muted)}
 .top-meta{display:flex;gap:10px;font:10px "DM Mono",monospace;color:var(--muted);letter-spacing:.06em}
 .top-meta span{padding:5px 10px;border:1px solid var(--line);border-radius:20px}
 #clock{color:var(--amber)}
 
-.keyboard{position:relative;padding-top:34px}
-.performer{position:absolute;top:0;left:50%;width:8px;height:8px;border-radius:50%;background:var(--amber);box-shadow:0 0 0 4px #d9a34f22;transform:translate(-50%,0);transition:left .22s cubic-bezier(.3,.7,.4,1),transform .12s ease;z-index:2}
-.performer:after{content:"";position:absolute;top:8px;left:50%;width:1px;height:22px;background:linear-gradient(#d9a34f66,transparent);transform:translateX(-50%)}
-.performer.hit{transform:translate(-50%,0) scale(1.6)}
-.keys{display:flex;height:64px;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#0e0d0c}
+.keyboard-card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:28px 22px 20px}
+.keyboard{position:relative}
+.performer{position:absolute;top:0;left:50%;width:9px;height:9px;border-radius:50% 50% 50% 0;background:var(--amber);box-shadow:0 0 0 5px #d9a34f1c;transform:translate(-50%,0) rotate(45deg);transition:left .22s cubic-bezier(.3,.7,.4,1),transform .12s ease;z-index:2}
+.performer:before,.performer:after{content:"";position:absolute;top:1px;width:11px;height:6px;background:#d9a34f4d;border-radius:70% 70% 0 70%;animation:flutter .18s infinite ease-in-out alternate}
+.performer:before{left:-9px;transform-origin:right center}
+.performer:after{right:-9px;transform:scaleX(-1);transform-origin:left center}
+.performer:after{animation-delay:.09s}
+.performer i{position:absolute;top:11px;left:50%;width:1px;height:24px;background:linear-gradient(#d9a34f66,transparent);transform:translateX(-50%) rotate(-45deg);transform-origin:top}
+.performer.hit{transform:translate(-50%,0) rotate(45deg) scale(1.7)}
+.keys{display:flex;height:64px;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#0e0d0c;margin-top:28px}
 .keys button{flex:1;border:0;border-right:1px solid var(--line);background:#1c1916;transition:background .18s ease,transform .18s ease}
 .keys button:last-child{border-right:0}
 .keys button.active{background:var(--amber);transform:translateY(3px)}
+@keyframes flutter{from{transform:rotate(-6deg) scaleY(1)}to{transform:rotate(14deg) scaleY(.85)}}
 
 .transport{display:flex;align-items:center;gap:16px}
 .play{width:44px;height:44px;flex:none;border:1px solid var(--line-strong);border-radius:50%;color:var(--ink);font-size:14px;display:flex;align-items:center;justify-content:center;transition:border-color .2s ease,color .2s ease}
