@@ -2,67 +2,44 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#071018">
-  <title>Pac-Fly | Virtual Fly Brain Piano Trainer</title>
-  <meta name="description" content="A lofi virtual fly brain piano trainer powered by a FlyWire-derived connectome.">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1c1714">
+  <title>Virtual Fly Brain Piano Cafe</title>
+  <meta name="description" content="A quiet cafe piano room for the virtual fly brain.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <header class="topbar">
-    <div class="brand"><span class="brand-mark">♫</span><div><h1>VIRTUAL FLY <b>PIANO</b></h1><p>CONNECTOME TRAINER <i>• LIVE</i></p></div></div>
-    <div class="top-actions"><span class="session-badge">SESSION 0042</span><button id="theme-toggle" class="icon-btn" type="button" aria-label="Switch to light mode">☼</button></div>
-  </header>
+  <main class="cafe">
+    <header class="topbar">
+      <div class="brand"><span class="brand-mark">☕</span><div><h1>VIRTUAL FLY <b>CAFE</b></h1><p>PIANO TRAINER <i>• OPEN</i></p></div></div>
+      <div class="clock" id="clock">00:00</div>
+    </header>
 
-  <div class="mobile-tabs" role="tablist" aria-label="Lab views">
-    <button class="view-tab active" data-view="arena" type="button">◉<span>Play</span></button>
-    <button class="view-tab" data-view="brain" type="button">✦<span>Brain</span></button>
-    <button class="view-tab" data-view="data" type="button">⌁<span>Signals</span></button>
-  </div>
-
-  <main class="dashboard">
-    <section class="panel experiment-panel view-arena">
-      <div class="panel-head"><div><span class="eyebrow">LOFI STUDIO / 01</span><h2>Fly piano session</h2></div><span class="live-dot">● AUTONOMOUS</span></div>
-      <div class="now-playing"><div><span class="eyebrow">NOW PLAYING</span><strong id="song-title">Waving Flag <em>— K'naan</em></strong><small>Target melody translated into sensory impulses</small></div><span class="session-time" id="session-time">00:00</span></div>
-      <div class="arena-shell piano-room"><canvas id="arcade-canvas" role="img" aria-label="Connectome-controlled piano trainer"></canvas><canvas id="arena-3d" aria-label="3D fly piano room"></canvas><div class="room-lights"></div><div class="bookshelf"><i></i><i></i><i></i><i></i></div><div class="window"><span></span><b></b><b></b><b></b></div><div class="piano-prop"><div class="piano-top"></div><div class="piano-body"><div class="piano-keys" id="piano-keys"></div></div><div class="piano-legs"></div></div><div class="stool-prop"><span class="fly-prop">●</span><i></i></div><div class="coffee-prop">☕</div><div class="plant-prop">♧</div><div class="arena-overlay"><span>VIRTUAL FLY / 24 KEYS</span><span id="arena-mode">BRAIN CONTROLLED</span></div><div class="touch-hint">Tap a key to preview</div></div>
-      <div class="piano-controls"><button id="previous-song" class="round-control" type="button">‹ <span>Previous (Vol−)</span></button><div class="volume-control"><span>VOLUME</span><input id="piano-volume" type="range" min="0" max="1" step=".05" value=".55" aria-label="Piano volume"></div><button id="next-song" class="round-control primary-control" type="button"><span>Next (Vol+)</span> ›</button></div>
-      <div class="score-row"><span><b id="stat-score">0</b><small>NOTES</small></span><span><b id="stat-lives">3</b><small>TRIALS</small></span><span><b id="ghost-reward-inline">0</b><small>REWARDS</small></span><button id="pause-game" class="tool-btn" type="button">Pause</button><button id="reset-game" class="tool-btn" type="button">Reset</button><button id="human-toggle" class="primary-btn" type="button">Manual preview</button></div>
-      <div class="score-row"><span><b id="stat-score">0</b><small>SCORE</small></span><span><b id="stat-lives">3</b><small>LIVES</small></span><span><b id="ghost-reward-inline">0</b><small>GHOSTS</small></span><button id="pause-game" class="tool-btn" type="button">Pause</button><button id="reset-game" class="tool-btn" type="button">Reset</button><button id="human-toggle" class="primary-btn" type="button">Enter chase mode</button></div>
-      <div class="god-mode">
-        <div class="control-title"><span>GOD MODE</span><small id="tool-status">Select a tool, then tap the arena</small></div>
-        <div class="tool-row"><button class="tool-btn active" data-tool="sugar" type="button">＋ Sugar</button><button class="tool-btn" data-tool="trap" type="button">◆ Trap</button><button id="clear-sugar" class="tool-btn" type="button">Clear</button><button id="fill-sugar" class="tool-btn" type="button">Fill</button></div>
-        <div class="preset-row"><span>CHALLENGE</span><button class="tool-btn" data-challenge="calm" type="button">Calm</button><button class="tool-btn" data-challenge="rush" type="button">Rush</button><button class="tool-btn" data-challenge="swarm" type="button">Swarm</button></div>
-        <div class="control-grid"><label>Fly speed <output id="fly-speed-value">1.0×</output><input id="fly-speed" type="range" min=".35" max="2" step=".05" value="1"></label><label>Ghost speed <output id="ghost-speed-value">1.0×</output><input id="ghost-speed" type="range" min=".35" max="2" step=".05" value="1"></label><label class="switch-label">Ghost behavior <output id="behavior-value">PREDATORS</output><button id="behavior-toggle" class="switch" type="button" aria-pressed="false"><span></span></button></label></div>
+    <section class="room" aria-label="Lofi piano room">
+      <div class="string-lights">•　•　•　•　•　•　•　•</div>
+      <div class="window"><span>✦</span><i></i><i></i><i></i></div>
+      <div class="shelf"><b>BOOKS</b><i></i><i></i><i></i><small>✽</small></div>
+      <div class="plant">♧</div>
+      <div class="steam">⌁</div><div class="mug">☕</div>
+      <div class="piano" aria-label="Upright piano">
+        <div class="piano-lid"></div><div class="piano-front"><div class="keys" id="keys"></div></div><div class="piano-pedals">◌　◌</div>
       </div>
-      <div class="dpad" aria-label="Chase mode controls"><button data-dir="up" type="button">▲</button><div><button data-dir="left" type="button">◀</button><button data-dir="down" type="button">▼</button><button data-dir="right" type="button">▶</button></div></div>
+      <div class="stool"><div class="fly" id="fly" title="Virtual fly">●</div></div>
+      <div class="wires"></div>
+      <div class="room-caption"><span>NEURAL PIANO ROOM</span><small>soft light / quiet night / live connectome</small></div>
     </section>
 
-    <section class="panel brain-panel view-brain">
-      <div class="panel-head"><div><span class="eyebrow">NEURAL IMAGING / 02</span><h2>Live connectome</h2></div><span class="panel-note" id="brain-status">FLYWIRE • loading</span></div>
-      <div class="brain-viewport"><canvas id="brain-canvas"></canvas><div class="imaging-hud"><span>● GCaMP FIELD</span><span>720 NODES / PROJECTION</span><span>DRAG TO ORBIT</span></div><div class="imaging-controls"><button id="brain-rotate" type="button">AUTO ROTATE</button><button id="brain-fibers" type="button">FIBERS</button><button id="brain-reset" type="button">RESET VIEW</button></div><span class="viewport-label">ACTIVITY FIELD / REPRESENTATIVE VIEW</span></div>
-      <div class="state-strip"><div><span class="eyebrow">CURRENT STATE</span><strong id="state-ticker">GROOMING</strong><small id="state-log">awaiting transitions</small></div><div class="alert-ring"><span id="arousal-pct">0%</span><small>AROUSAL</small></div></div>
-      <div class="sense-strip"><span>👁 <b id="sense-vision">VISION 0%</b></span><span>⌁ <b id="sense-odor">ODOR 0%</b></span><span>∿ <b id="sense-vibration">VIBRATION 0%</b></span><span>✋ <b id="sense-touch">TOUCH 0%</b></span></div>
-      <div class="avatar-card"><div><span class="eyebrow">MOTOR READOUT</span><strong id="motor-action">RESTING</strong><small id="motor-sub">live action • model output</small></div><canvas id="fly-avatar" width="180" height="100" aria-label="Live fly avatar"></canvas></div>
+    <section class="console">
+      <div class="now-playing"><div><span class="eyebrow">NOW PLAYING</span><h2 id="track-name">Ode to Joy <em>— Beethoven</em></h2><p id="track-note">Public-domain piano arrangement · ready to play</p></div><button id="play-track" class="play" type="button" aria-label="Play song">▶</button></div>
+      <div class="controls"><button id="previous" type="button">‹</button><button id="next" type="button">›</button><input id="volume" type="range" min="0" max="1" step=".01" value=".65" aria-label="Volume"><span id="volume-label">65%</span><label class="upload">Load your song <input id="song-file" type="file" accept="audio/*"></label></div>
+      <div class="visuals"><div class="wave-card"><div class="card-title"><span>DOPAMINE LEVELS</span><b id="dopamine-value">32%</b></div><canvas id="wave" width="600" height="130"></canvas></div><div class="neural-card"><div class="card-title"><span>NEURAL ACTIVITY</span><b id="neural-value">LIVE</b></div><canvas id="neural" width="360" height="130"></canvas></div></div>
+      <div class="status"><span><i class="live"></i> FLY BRAIN CONNECTED</span><span id="status-text">press play or touch a key</span><span>24 KEY RANGE</span></div>
     </section>
-
-    <aside class="panel telemetry-panel view-data">
-      <div class="panel-head"><div><span class="eyebrow">SIGNALS / 03</span><h2>Behavioral telemetry</h2></div><span class="panel-note">MODEL PROXIES</span></div>
-      <div class="metric-grid"><div class="metric"><span>HUNGER / NPF</span><b id="val-npf">0%</b><div class="meter"><i id="meter-npf"></i></div></div><div class="metric"><span>THREAT / LOOMING</span><b id="val-panic">0%</b><div class="meter red"><i id="meter-panic"></i></div></div><div class="metric"><span>REWARD / MB-DAN</span><b id="val-dopamine">0%</b><div class="meter gold"><i id="meter-dopamine"></i></div></div><div class="metric"><span>STAMINA</span><b id="val-stamina">100%</b><div class="meter cyan"><i id="meter-stamina"></i></div></div></div>
-      <div class="sensory-panel"><span class="chart-label">SENSORY INPUT</span><label>THREAT <i id="bar-threat"></i></label><label>FOOD DRIVE <i id="bar-food"></i></label><label>RAYCAST LOOM <i id="bar-ray"></i></label></div>
-      <div class="motor-panel"><span class="chart-label">MOTOR INTENT</span><div class="motor-dpad"><b id="motor-up">▲</b><div><b id="motor-left">◀</b><b id="motor-rest">●</b><b id="motor-right">▶</b></div><b id="motor-down">▼</b></div></div>
-      <div class="chart-block"><div class="chart-head"><span>DRIVE COMPASS</span><small>current modeled balance</small></div><canvas id="drive-chart" width="420" height="170"></canvas><div class="chart-legend"><span class="green">● FORAGE</span><span class="red">● THREAT</span><span class="cyan">● EXPLORE</span><span class="gold">● REST</span></div></div>
-      <div class="chart-block"><div class="chart-head"><span>REWARD TRAJECTORY</span><small>history + current threat</small></div><canvas id="scatter-chart" width="420" height="140"></canvas></div>
-      <div class="chart-block"><div class="chart-head"><span>LIVE SIGNAL HISTORY</span><select id="trend-signal" aria-label="Choose signal history"><option value="npfLevel">Hunger / NPF</option><option value="panicLevel">Threat / Looming</option><option value="dopamineTransient">Reward / MB-DAN</option><option value="arousalLevel">Arousal</option><option value="stamina">Stamina</option></select></div><canvas id="trend-chart" width="420" height="120"></canvas></div>
-      <div class="chart-block timeline"><div class="chart-head"><span>STATE OCCUPANCY</span><small>measured transition duration</small></div><div id="timeline-strip" class="timeline-strip"></div><div class="timeline-labels"><span>−12.6 s</span><span>now</span></div></div>
-      <div class="telemetry-footer"><span id="gf-status">ESCAPE PROXY · IDLE</span><span id="disgust-flag">AVERSIVE QUIET</span><span id="reward-flag">GHOST REWARD · 0</span></div>
-    </aside>
   </main>
-
-  <footer><span>FLYWIRE-DERIVED STRUCTURE · MODELED DYNAMICS</span><a href="README.md">METHODS ↗</a></footer>
-  <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script><script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script><script src="https://unpkg.com/three@0.128.0/examples/js/shaders/CopyShader.js"></script><script src="https://unpkg.com/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script><script src="https://unpkg.com/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script><script src="https://unpkg.com/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script><script src="https://unpkg.com/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script><script src="https://unpkg.com/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
-  <script src="PacmanGame.js"></script><script src="Connectome.js"></script><script src="FlyNeuralEngine.js"></script><script src="FullBrainBridge.js"></script><script src="BrainVisualizer.js"></script><script src="ThreeArenaView.js"></script><script src="main.js"></script>
+  <audio id="uploaded-audio" preload="metadata"></audio>
+  <script src="main.js"></script>
 </body>
 </html>
