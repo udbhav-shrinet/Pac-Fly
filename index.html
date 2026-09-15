@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pac-Fly — The Minimal Viable Connectome</title>
+<meta name="description" content="A real, pruned FlyWire fruit fly connectome plays Pac-Man autonomously in your browser. Zero dependencies. 100% client-side.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🪰</text></svg>">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<a class="skip-link" href="#arena-canvas">Skip to game</a>
+
+<header class="app-header">
+  <div class="brand">
+    <span class="brand-glyph" aria-hidden="true">🪰</span>
+    <div class="brand-text">
+      <h1>PAC-FLY</h1>
+      <p class="brand-sub">The Minimal Viable Connectome</p>
+    </div>
+  </div>
+  <div class="header-stats" role="status" aria-live="polite">
+    <div class="stat">
+      <span class="stat-label">Score</span>
+      <span class="stat-value" id="stat-score">0</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Ticks Alive</span>
+      <span class="stat-value" id="stat-ticks">0</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Status</span>
+      <span class="stat-value stat-alive" id="stat-status">ALIVE</span>
+    </div>
+  </div>
+</header>
+
+<main class="layout">
+  <section class="arena-panel" aria-label="Game arena">
+    <div class="panel-heading">
+      <h2>Arena</h2>
+      <span class="panel-tag">live simulation</span>
+    </div>
+    <div class="canvas-wrap">
+      <canvas id="arena-canvas" width="560" height="560" role="img" aria-label="Pac-Fly game grid, rendered live"></canvas>
+      <div class="panic-flash" id="panic-flash" aria-hidden="true"></div>
+    </div>
+  </section>
+
+  <aside class="telemetry-panel" aria-label="Neural telemetry">
+    <div class="panel-heading">
+      <h2>Neural Telemetry</h2>
+      <span class="panel-tag">268 neurons · LIF model</span>
+    </div>
+
+    <div class="telemetry-grid">
+      <article class="telem-card" data-region="AL">
+        <header>
+          <h3>Antennal Lobe</h3>
+          <span class="telem-sub">Hunger / Olfactory Drive</span>
+        </header>
+        <canvas class="telem-canvas" id="chart-al" width="280" height="70"></canvas>
+        <div class="telem-readout"><span id="val-al">0%</span></div>
+      </article>
+
+      <article class="telem-card" data-region="MB">
+        <header>
+          <h3>Mushroom Body</h3>
+          <span class="telem-sub">Dopamine Reward</span>
+        </header>
+        <canvas class="telem-canvas" id="chart-mb" width="280" height="70"></canvas>
+        <div class="telem-readout"><span id="val-mb">0%</span></div>
+      </article>
+
+      <article class="telem-card" data-region="GF">
+        <header>
+          <h3>Giant Fiber / LC4</h3>
+          <span class="telem-sub">Looming Panic</span>
+        </header>
+        <canvas class="telem-canvas" id="chart-gf" width="280" height="70"></canvas>
+        <div class="telem-readout"><span id="val-gf">0%</span></div>
+      </article>
+
+      <article class="telem-card" data-region="DN">
+        <header>
+          <h3>Descending Neurons</h3>
+          <span class="telem-sub">Motor Output (L / R / Fwd)</span>
+        </header>
+        <canvas class="telem-canvas" id="chart-dn" width="280" height="70"></canvas>
+        <div class="telem-readout"><span id="val-dn">idle</span></div>
+      </article>
+    </div>
+
+    <div class="connectome-mini" aria-label="Connectome activity map">
+      <canvas id="connectome-canvas" width="280" height="180"></canvas>
+    </div>
+  </aside>
+</main>
+
+<footer class="god-panel" aria-label="God controls">
+  <div class="god-heading">
+    <span class="god-icon" aria-hidden="true">⚡</span>
+    <span>GOD CONTROLS</span>
+  </div>
+  <div class="god-buttons">
+    <button id="btn-add-ghost" class="god-btn god-btn-danger" type="button">
+      <span class="btn-icon" aria-hidden="true">+</span> Add Ghost
+    </button>
+    <button id="btn-remove-ghost" class="god-btn" type="button">
+      <span class="btn-icon" aria-hidden="true">−</span> Remove Ghosts
+    </button>
+    <button id="btn-add-sugar" class="god-btn god-btn-sugar" type="button">
+      <span class="btn-icon" aria-hidden="true">+</span> Drop Sugar
+    </button>
+    <button id="btn-clear-sugar" class="god-btn" type="button">
+      <span class="btn-icon" aria-hidden="true">−</span> Clear Sugar
+    </button>
+  </div>
+</footer>
+
+<div class="modal-overlay" id="modal-overlay" hidden>
+  <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-scan"></div>
+    <h2 id="modal-title">TERMINAL SHOCK</h2>
+    <p class="modal-sub">FLY DEAD</p>
+    <p class="modal-detail" id="modal-detail">Survived 0 ticks · Score 0</p>
+    <button id="btn-reboot" class="god-btn god-btn-danger modal-reboot" type="button">REBOOT CONNECTOME</button>
+  </div>
+</div>
+
+<script src="brain.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
