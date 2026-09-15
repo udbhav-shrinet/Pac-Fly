@@ -18,6 +18,11 @@ dopamine reward, while a wrong selection produces punishment. Each trial
 updates the fly's per-song, per-position policy and reduces exploration, so
 the performance converges on the target melody.
 
+This is a transparent virtual-fly reinforcement model running in the browser,
+not a living fly and not a scientifically validated whole-brain simulation.
+The dopamine, punishment, emotion, hormone, and neuron readouts are modeled
+proxies for the learning state.
+
 ## Run
 
 ```bash
