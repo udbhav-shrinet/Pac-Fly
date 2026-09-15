@@ -142,6 +142,7 @@ class PacmanGame {
     this.exhausted = false;
     this.paused = false;
     this.motorAction = 'RESTING';
+    this.restingUntil = 0;
     this.episode = 0;
     this.recentVisits = new Map();
 
@@ -377,6 +378,7 @@ class PacmanGame {
     }
 
     this._checkGhostCollision(now);
+    this.motorAction = this.pac.resting ? 'RESTING' : this.sprintActive ? 'ESCAPE / SPRINT' : `WALKING · ${this.pac.dir.toUpperCase()}`;
 
     this.mouthPhase += dt * (this.pac.resting ? 1.5 : this.sprintActive ? 14 : this.exhausted ? 4 : 9);
   }
@@ -440,6 +442,7 @@ class PacmanGame {
     this.episode++;
     const startDir = ['left', 'up', 'right', 'down'][this.episode % 4];
     pac.row = 26 * MAZE_SCALE; pac.col = 13 * MAZE_SCALE; pac.moveT = 0; pac.dir = startDir; pac.queuedDir = startDir; pac.resting = false;
+    this.restingUntil = 0;
     for (let i = 0; i < this.ghosts.length; i++) {
       const g = this.ghosts[i];
       g.inHouse = true;
@@ -534,6 +537,11 @@ class PacmanGame {
    */
   _updatePacBrain(dt) {
     const pac = this.pac;
+    if (performance.now() < this.restingUntil) {
+      pac.resting = true;
+      this.motorAction = 'RESTING';
+      return;
+    }
     if (this.humanMode) {
       if (this.humanDir) pac.queuedDir = this.humanDir;
       pac.resting = false;
@@ -630,6 +638,7 @@ class PacmanGame {
     // says. This is a hard rule, not a suggestion.
     const ghostIsClose = ghostDist != null && ghostDist < 5;
     this.pac.resting = !!motor.rest && !ghostIsClose;
+    if (this.pac.resting) this.restingUntil = performance.now() + 900;
     if (this.pac.resting) return;
 
     const relativeLabel = (name) => {

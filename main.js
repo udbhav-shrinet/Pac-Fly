@@ -126,6 +126,7 @@
   }
   function drawScatter(s) {
     const c = $('scatter-chart'), ctx = c.getContext('2d'), w = c.width, h = c.height; ctx.clearRect(0, 0, w, h); ctx.strokeStyle = 'rgba(128,180,190,.2)'; ctx.beginPath(); ctx.moveTo(28, 10); ctx.lineTo(28, h - 20); ctx.lineTo(w - 8, h - 20); ctx.stroke();
+    history.forEach(item => { const px = 28 + clamp(item.panicLevel) * (w - 44), py = h - 20 - clamp(item.dopamineTransient) * (h - 36); ctx.fillStyle = 'rgba(71,216,232,.18)'; ctx.beginPath(); ctx.arc(px, py, 2, 0, Math.PI * 2); ctx.fill(); });
     const x = 28 + clamp(s.panicLevel) * (w - 44), y = h - 20 - clamp(s.dopamineTransient) * (h - 36), radius = 6 + clamp(s.arousalLevel) * 18; ctx.fillStyle = 'rgba(255,84,116,.22)'; ctx.strokeStyle = '#ff5474'; ctx.beginPath(); ctx.arc(x, y, radius, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.fillStyle = '#7d9aa3'; ctx.font = '9px DM Mono'; ctx.fillText('THREAT →', w - 55, h - 5); ctx.save(); ctx.translate(10, 80); ctx.rotate(-Math.PI / 2); ctx.fillText('REWARD', 0, 0); ctx.restore();
   }
   function drawTrend() {
@@ -164,9 +165,9 @@
     ctx.stroke();
   }
   function drawAvatar(s) {
-    const c = $('fly-avatar'), ctx = c.getContext('2d'), w = c.width, h = c.height, t = performance.now() / 300, active = s.behaviorState === 'ESCAPE' || s.giantFiberFiring, lean = Math.sin(t) * (active ? .2 : .06);
+    const c = $('fly-avatar'), ctx = c.getContext('2d'), w = c.width, h = c.height, t = performance.now() / 300, action = game.motorAction || 'RESTING', active = action.includes('ESCAPE'), walking = !['RESTING', 'ESCAPE / REVERSE'].includes(action), lean = active ? -.24 : walking ? .08 : 0;
     ctx.clearRect(0, 0, w, h); ctx.save(); ctx.translate(w / 2, h / 2 + 7); ctx.rotate(lean); ctx.fillStyle = 'rgba(90,210,230,.17)'; ctx.strokeStyle = '#74e9ee'; ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.ellipse(-25, -8, 28, 10, -.35, 0, Math.PI * 2); ctx.ellipse(25, -8, 28, 10, .35, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.fillStyle = active ? '#ff5474' : '#c3a16b'; ctx.beginPath(); ctx.ellipse(0, 5, 9, 24, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.fillStyle = '#e8f5f5'; ctx.beginPath(); ctx.arc(0, -16, 8, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#15252b'; ctx.beginPath(); ctx.arc(-3, -17, 2, 0, Math.PI * 2); ctx.arc(3, -17, 2, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+    ctx.beginPath(); ctx.ellipse(-25, -8, 28, 10, -.35, 0, Math.PI * 2); ctx.ellipse(25, -8, 28, 10, .35, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.fillStyle = active ? '#ff5474' : walking ? '#ffc857' : '#8ea7b0'; ctx.beginPath(); ctx.ellipse(0, 5, 9, 24, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.strokeStyle = active ? '#ff5474' : '#c3a16b'; ctx.lineWidth = 1; for (let i = -1; i <= 1; i += 2) { ctx.beginPath(); ctx.moveTo(i * 6, 8); ctx.lineTo(i * (16 + Math.sin(t * 2) * (walking ? 4 : 0)), 15); ctx.lineTo(i * 8, 23); ctx.stroke(); } ctx.fillStyle = '#e8f5f5'; ctx.beginPath(); ctx.arc(0, -16, 8, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#15252b'; ctx.beginPath(); ctx.arc(-3, -17, 2, 0, Math.PI * 2); ctx.arc(3, -17, 2, 0, Math.PI * 2); ctx.fill(); ctx.restore();
   }
   let last = performance.now(), sample = 0, lastState = '', stateSince = performance.now();
   function loop(now) {

@@ -118,12 +118,13 @@ class FullBrainBridge {
     // symmetric activity a forward-biased motor output so the fly traverses
     // the map instead of spinning in place.
     const threatBearing = this.latestSenses?.ghostBearing || 0;
-    const threat = Math.max(this.threatLevel, flee / 8);
+    const currentThreat = this.latestSenses?.ghostDist == null ? 0 : Math.max(0, 1 - this.latestSenses.ghostDist / 9);
+    const threat = currentThreat > 0.08 ? Math.max(this.threatLevel, flee / 8) : 0;
     const left = turn * 0.08 + Math.max(0, threatBearing) * threat * 1.8;
     const right = turn * 0.08 + Math.max(0, -threatBearing) * threat * 1.8;
     const forward = walk + turn * 0.55;
     const reverseDrive = reverse + threat * 2.4;
-    const motor = { left, right, forward, reverse: reverseDrive, rest: forward < 0.12 && reverseDrive < 0.18 && threat < 0.2 };
+    const motor = { left, right, forward, reverse: reverseDrive, rest: forward < 0.2 && reverseDrive < 0.22 && threat < 0.16 };
     this.lastMotor = motor;
     return motor;
   }
@@ -134,8 +135,10 @@ class FullBrainBridge {
       + this._activity('DN_STARTLE')
       + this._activity('MECH_JO')
       + this._activity('OLF_ORN_DANGER')) / 8);
+    const currentThreat = this.latestSenses?.ghostDist == null ? 0 : Math.max(0, 1 - this.latestSenses.ghostDist / 9);
+    const gatedFear = currentThreat > 0.08 ? fearRaw : 0;
     this.hungerLevel += (hungerRaw - this.hungerLevel) * 0.08;
-    this.threatLevel += (fearRaw - this.threatLevel) * 0.16;
+    this.threatLevel += (gatedFear - this.threatLevel) * (gatedFear > 0 ? 0.16 : 0.32);
     const hunger = this.hungerLevel;
     const fear = this.threatLevel;
     const dopamine = this._activity('MB_DAN_REW');
