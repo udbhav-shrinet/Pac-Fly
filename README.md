@@ -1,10 +1,53 @@
-# 🟡 Pac-Fly: Arcade Engine × Drosophila Connectome
+# 🟡 Pac-Fly: FlyWire Brain × Arcade Arena
 
 **A pixel-accurate recreation of the 1980 arcade Pac-Man maze, controlled entirely by a real leaky integrate-and-fire spiking network that loads and processes a Drosophila melanogaster connectome adjacency matrix at runtime.**
 
 Pac-Man does not take player input. He is not driven by a distance-scoring heuristic. Every direction change comes from reading descending-neuron motor populations out of a 66-neuron, 270-synapse graph after it has been stepped — the same way `readMotor()` would work in a real closed-loop connectome simulation.
 
 Zero build step. Open `index.html` and it runs.
+
+## 🧠 The whole-brain upgrade
+
+Pac-Fly now ships a **FlyWire FAFB v783-derived binary graph**: **139,255
+neurons and 2,698,236 aggregated connections**. The graph is decompressed and
+simulated in `FullBrainWorker.js`, not on the rendering thread. CSR typed
+arrays, active-group gating, and a 10 Hz tick keep the interface responsive;
+the UI can render the live fire state without freezing the arena.
+
+This is a real structural connectome-driven model, not an LLM and not a
+marketing-only counter. The bridge injects food, looming danger, touch,
+gustatory reward, bitter punishment, and hunger into annotated FlyWire-derived
+functional groups, then reads walking, turning, backup, flight, and startle
+groups back into the arena motor contract.
+
+**Scientific boundary:** FlyWire provides a measured wiring diagram, not a
+validated whole-brain biophysical simulation. Membrane constants, synaptic
+normalization, group-level sensory interfaces, and behavior readouts are
+explicit modeling assumptions. The original 66-neuron circuit remains as a
+fallback when the binary asset or Worker is unavailable.
+
+### ⚡ Interactive research mode
+
+- 🧂 Click **Sugar** to place food; normal sugar gives a small reward.
+- ⚪ Power pellets are high-salience rewards and produce a larger dopaminergic
+  signal.
+- 🟣 Bitter traps stimulate aversive gustatory pathways and remove a ghost on
+  contact.
+- 🕹️ Toggle **Human chase mode** through the arena controls to enter the maze
+  and pursue the autonomous fly (the connectome still controls the fly).
+- 🌗 Switch the lab between dark fluorescence and clinical light mode.
+- 📈 Watch hunger, fear, dopamine, arousal, drive balance, and behavior history
+  update from the running brain backend.
+
+### 📦 Asset provenance
+
+The checked-in binary is derived from the public FlyWire FAFB v783 release and
+is redistributed as a compact browser artifact. Credit the FlyWire Consortium
+and cite: Dorkenwald et al., *Neuronal wiring diagram of an adult brain*,
+Nature 634, 124–138 (2024), DOI
+[10.1038/s41586-024-07558-y](https://doi.org/10.1038/s41586-024-07558-y).
+The upstream data is versioned; do not silently replace it with a different
+materialization.
 
 ## V2 research console
 

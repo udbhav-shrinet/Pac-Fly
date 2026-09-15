@@ -113,6 +113,8 @@ class PacmanGame {
     this.hazardPlacementMode = false;
     this.placementMode = 'trap';
     this.ghostBehavior = 'predator';
+    this.humanMode = false;
+    this.humanDir = null;
     this.flySpeedScale = 1;
     this.ghostSpeedScale = 1;
     this.catchFlashUntil = 0;
@@ -216,9 +218,17 @@ class PacmanGame {
       if (this.placementMode === 'sugar') this.placeSugar(row, col);
       else this.placeHazard(row, col);
     });
+    window.addEventListener('keydown', (evt) => {
+      const keys = { ArrowRight: 'right', d: 'right', ArrowDown: 'down', s: 'down', ArrowLeft: 'left', a: 'left', ArrowUp: 'up', w: 'up' };
+      if (this.humanMode && keys[evt.key]) {
+        this.humanDir = keys[evt.key];
+        evt.preventDefault();
+      }
+    });
   }
 
   setHazardPlacementMode(active) { this.hazardPlacementMode = active; }
+  setHumanMode(active) { this.humanMode = Boolean(active); }
 
   setPlacementMode(mode) {
     if (mode !== 'sugar' && mode !== 'trap') throw new Error(`Unknown placement mode: ${mode}`);
@@ -456,6 +466,11 @@ class PacmanGame {
    */
   _updatePacBrain(dt) {
     const pac = this.pac;
+    if (this.humanMode) {
+      if (this.humanDir) pac.queuedDir = this.humanDir;
+      pac.resting = false;
+      return;
+    }
     const options = [];
     for (const name of Object.keys(DIRS)) {
       const d = DIRS[name];

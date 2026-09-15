@@ -5,13 +5,21 @@
   const state = () => engine ? engine.state : fallback;
   const game = new PacmanGame(document.getElementById('arcade-canvas'), {
     brainTick: (sense, dt) => engine ? engine.update(dt, sense) : null,
-    onPelletEaten: kind => engine && engine.onPelletEaten(kind),
-    onHazardEaten: () => engine && engine.onHazardEaten(),
-    onCaught: () => engine && engine.onCaught(),
+    onPelletEaten: kind => engine && engine.onPelletEaten && engine.onPelletEaten(kind),
+    onHazardEaten: () => engine && engine.onHazardEaten && engine.onHazardEaten(),
+    onCaught: () => engine && engine.onCaught && engine.onCaught(),
   });
   game.start();
-  FlyNeuralEngine.create('connectome.json').then(value => { engine = value; }).catch(error => {
-    console.error('Pac-Fly: connectome failed to load.', error);
+  // Prefer the versioned 139,255-neuron FlyWire-derived binary. The compact
+  // 66-neuron circuit remains a deterministic offline fallback.
+  FullBrainBridge.create().then(value => {
+    engine = value;
+    document.querySelector('.live-dot').textContent = '● FLYWIRE WHOLE-BRAIN';
+  }).catch(error => {
+    console.warn('Pac-Fly: full brain unavailable; using compact circuit.', error);
+    return FlyNeuralEngine.create('connectome.json').then(value => { engine = value; });
+  }).catch(error => {
+    console.error('Pac-Fly: no brain backend loaded.', error);
     document.querySelector('.experiment-panel').dataset.error = 'connectome unavailable';
   });
 
@@ -29,6 +37,12 @@
   }));
   $('clear-sugar').addEventListener('click', () => game.clearSugar());
   $('fill-sugar').addEventListener('click', () => game.fillSugar());
+  $('human-toggle').addEventListener('click', event => {
+    game.setHumanMode(!game.humanMode);
+    event.currentTarget.textContent = game.humanMode ? 'Return to brain' : 'Enter chase mode';
+    $('tool-status').textContent = game.humanMode ? 'WASD / arrow keys: catch the autonomous fly' : 'Select a tool, then click the arena';
+    document.querySelector('.live-dot').textContent = game.humanMode ? '● HUMAN CHASE' : '● AUTONOMOUS';
+  });
   $('fly-speed').addEventListener('input', event => { const v = Number(event.target.value); game.setFlySpeedScale(v); $('fly-speed-value').textContent = `${v.toFixed(1)}×`; });
   $('ghost-speed').addEventListener('input', event => { const v = Number(event.target.value); game.setGhostSpeedScale(v); $('ghost-speed-value').textContent = `${v.toFixed(1)}×`; });
   $('behavior-toggle').addEventListener('click', event => {
@@ -68,7 +82,10 @@
   let last = performance.now(), sample = 0, lastState = '';
   function loop(now) {
     const dt = Math.min(.05, (now - last) / 1000); last = now; sample += dt * 1000; const s = state();
-    if (engine) { game.setSprintActive(engine.isGiantFiberFiring()); engine.setExhausted(game.exhausted); }
+    if (engine) {
+      game.setSprintActive(engine.isGiantFiberFiring ? engine.isGiantFiberFiring() : engine.state.giantFiberFiring);
+      if (engine.setExhausted) engine.setExhausted(game.exhausted);
+    }
     if (sample > 140) { sample = 0; history.push(s); if (history.length > maxHistory) history.shift(); timeline.push(s.behaviorState); if (timeline.length > 72) timeline.shift(); $('timeline-strip').innerHTML = timeline.map(item => `<i data-state="${item}" title="${item}"></i>`).join(''); }
     $('val-npf').textContent = `${Math.round(s.npfLevel * 100)}%`; $('val-panic').textContent = `${Math.round(s.panicLevel * 100)}%`; $('val-dopamine').textContent = `${Math.round(s.dopamineTransient * 100)}%`; $('val-stamina').textContent = `${Math.round(game.stamina * 100)}%`;
     $('meter-npf').style.width = `${clamp(s.npfLevel) * 100}%`; $('meter-panic').style.width = `${clamp(s.panicLevel) * 100}%`; $('meter-dopamine').style.width = `${clamp(s.dopamineTransient) * 100}%`; $('meter-stamina').style.width = `${clamp(game.stamina) * 100}%`;
