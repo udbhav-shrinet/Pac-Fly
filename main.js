@@ -108,7 +108,11 @@
       $('neuron-value').textContent = `${correct ? 24 : 8 + Math.floor(Math.random() * 10)} / 24 ACTIVE`;
       if (brain && brain.state) {
         const neuralState = brain.state;
-        $('neuron-value').textContent = `${Math.round((neuralState.arousalLevel || 0) * 24)} / 24 ACTIVE`;
+        const totalNeurons = brain.neuronCount || 66;
+        const activeNeurons = brain.activeNeuronCount || Math.round((neuralState.arousalLevel || 0) * totalNeurons);
+        $('neuron-value').textContent = brainBackend === 'FLYWIRE WHOLE-BRAIN'
+          ? `${activeNeurons.toLocaleString()} / ${totalNeurons.toLocaleString()} ACTIVE`
+          : `${Math.round((neuralState.arousalLevel || 0) * totalNeurons)} / ${totalNeurons} ACTIVE`;
         $('hormone-value').textContent = `DA ${Math.round((neuralState.dopamineTransient || 0) * 100)} · 5-HT ${Math.round((1 - (neuralState.ppl1Transient || 0)) * 62)} · OA ${Math.round((neuralState.octopamineLevel || 0) * 100)}`;
         $('emotion-value').textContent = neuralState.behaviorState || 'FOCUSED';
         $('status-text').textContent = `${brainBackend} · ${neuralState.behaviorState || 'ACTIVE'}`;

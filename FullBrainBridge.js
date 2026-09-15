@@ -59,6 +59,9 @@ class FullBrainBridge {
   }
 
   _id(name) { return this.groupIds.get(name); }
+  get neuronCount() { return this.meta.neuron_count; }
+  get edgeCount() { return this.meta.edge_count; }
+  get activeNeuronCount() { return this.latestStats?.activeNeurons || 0; }
   _activity(name) {
     const id = this._id(name);
     return id === undefined ? 0 : this.activity[id];
