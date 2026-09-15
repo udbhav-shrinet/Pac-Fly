@@ -2,15 +2,15 @@
   const $ = id => document.getElementById(id);
   const tracks = [
     { name: 'Ode to Joy', artist: 'Beethoven', notes: [[64,1],[64,1],[65,1],[67,1],[67,1],[65,1],[64,1],[62,1],[60,1],[60,1],[62,1],[64,1],[64,1.5],[62,.5],[62,2]] },
-    { name: 'Für Elise', artist: 'Beethoven', notes: [76,75,76,75,76,71,74,72,69,45,52,57,60,64,69,71].map(note => [note, .75]) },
-    { name: 'Moonlight Sonata', artist: 'Beethoven', notes: [57,64,69,57,64,69,57,64,69,55,64,69,55,64,69,53].map(note => [note, .75]) },
-    { name: 'Canon in D', artist: 'Pachelbel', notes: [62,61,62,64,66,67,69,66,67,69,71,72,71,69,67,66].map(note => [note, .75]) },
+    { name: 'Für Elise', artist: 'Beethoven', notes: [[64,.5],[63,.5],[64,.5],[63,.5],[64,.5],[59,.5],[62,.5],[60,.5],[57,1],[48,.5],[52,.5],[57,.5],[59,1]] },
+    { name: 'Moonlight Sonata', artist: 'Beethoven', notes: [[57,.5],[64,.5],[69,.5],[57,.5],[64,.5],[69,.5],[56,.5],[64,.5],[68,.5],[54,.5],[64,.5],[68,.5],[55,.5],[64,.5],[69,.5],[54,1]] },
+    { name: 'Canon in D', artist: 'Pachelbel', notes: [62,57,59,54,55,50,55,57,62,57,59,54,55,50,55,57].map(note => [note, .75]) },
     { name: 'Greensleeves', artist: 'Traditional', notes: [64,67,69,69,71,69,67,65,64,62,60,62,64,64].map(note => [note, 1]) },
     { name: 'Amazing Grace', artist: 'Traditional', notes: [60,65,69,65,69,67,65,62,60,65,69,65,69,72,69].map(note => [note, 1]) },
-    { name: 'Jingle Bells', artist: 'Traditional', notes: [64,64,64,64,64,64,64,67,60,62,64,65,65,65,65,65].map(note => [note, .5]) },
+    { name: 'Jingle Bells', artist: 'Traditional', notes: [[64,.5],[64,.5],[64,1],[64,.5],[64,.5],[64,1],[64,.5],[67,.5],[60,.5],[62,.5],[64,2],[65,.5],[65,.5],[65,.5],[65,.5],[65,.5],[65,.25],[64,.25],[64,.5],[64,.25],[64,.25],[65,.5],[64,1],[67,1]] },
     { name: 'Happy Birthday', artist: 'Traditional', notes: [60,60,62,60,65,64,60,60,62,60,67,65,60,60,72,69].map(note => [note, .75]) },
     { name: 'Scarborough Fair', artist: 'Traditional', notes: [69,69,72,74,76,74,72,69,67,69,72,74,72,69,67].map(note => [note, 1]) },
-    { name: 'Beethoven Fifth', artist: 'Beethoven', notes: [64,64,64,60,64,64,64,57,64,64,64,60,64,64,64,57].map(note => [note, .5]) }
+    { name: 'Beethoven Fifth', artist: 'Beethoven', notes: [[67,.4],[67,.4],[67,.4],[63,1.6],[65,.4],[65,.4],[65,.4],[62,1.6]] }
   ];
   const audio = { context: null, master: null, volume: .65, timer: null, note: 0, playing: false, trial: 0, epsilon: 0, q: tracks.map(item => item.notes.map(() => new Map())), dopamine: .32, punishment: 0 };
   const BEAT_MS = 180;
@@ -122,6 +122,7 @@
       $('emotion-value').textContent = correct ? (audio.dopamine > .72 ? 'JOYFUL' : 'FOCUSED') : (audio.punishment > .55 ? 'FRUSTRATED' : 'CURIOUS');
       $('hormone-value').textContent = `DA ${Math.round(audio.dopamine * 100)} · 5-HT ${Math.round((1 - audio.punishment) * 62)} · OA ${Math.round(audio.punishment * 100)}`;
       $('neuron-value').textContent = `${correct ? 24 : 8 + Math.floor(Math.random() * 10)} / 24 ACTIVE`;
+      updateReceptors(audio.dopamine, 1 - audio.punishment, audio.punishment, $('emotion-value').textContent);
       if (brain && brain.state) {
         const neuralState = brain.state;
         const totalNeurons = brain.neuronCount || 66;
@@ -132,6 +133,7 @@
         $('hormone-value').textContent = `DA ${Math.round((neuralState.dopamineTransient || 0) * 100)} · 5-HT ${Math.round((1 - (neuralState.ppl1Transient || 0)) * 62)} · OA ${Math.round((neuralState.octopamineLevel || 0) * 100)}`;
         $('emotion-value').textContent = neuralState.behaviorState || 'FOCUSED';
         $('status-text').textContent = `${brainBackend} · ${neuralState.behaviorState || 'ACTIVE'}`;
+        updateReceptors((neuralState.dopamineTransient || 0), 1 - (neuralState.ppl1Transient || 0), (neuralState.octopamineLevel || 0), neuralState.behaviorState || 'FOCUSED');
       }
       audio.note++;
       $('clock').textContent = `${String(Math.floor(audio.note / 2)).padStart(2, '0')}:${String((audio.note * 30) % 60).padStart(2, '0')}`;
@@ -145,6 +147,30 @@
     const key = document.createElement('button'); key.type = 'button'; key.setAttribute('aria-label', `Piano key ${index + 1}`);
     key.setAttribute('aria-hidden', 'true'); $('keys').appendChild(key);
   });
+  const RECEPTOR_DOTS = 14;
+  const dotRows = { da: $('dots-da'), '5ht': $('dots-5ht'), oa: $('dots-oa') };
+  Object.values(dotRows).forEach(row => {
+    for (let i = 0; i < RECEPTOR_DOTS; i++) row.appendChild(document.createElement('i'));
+  });
+  function setReceptorRow(row, level) {
+    const lit = Math.round(Math.max(0, Math.min(1, level)) * RECEPTOR_DOTS);
+    [...row.children].forEach((dot, index) => {
+      dot.classList.toggle('lit', index < lit);
+      dot.style.opacity = index < lit ? Math.max(.45, level) : .16;
+    });
+  }
+  function updateReceptors(daLevel, serotoninLevel, oaLevel, mood) {
+    setReceptorRow(dotRows.da, daLevel);
+    setReceptorRow(dotRows['5ht'], serotoninLevel);
+    setReceptorRow(dotRows.oa, oaLevel);
+    const ring = $('emotion-ring');
+    const balance = Math.round(Math.max(0, Math.min(1, daLevel * .6 + serotoninLevel * .4 - oaLevel * .3)) * 100);
+    ring.style.setProperty('--pct', `${balance}%`);
+    ring.dataset.mood = (mood || 'CURIOUS').toLowerCase();
+    $('emotion-ring-label').textContent = mood || 'CURIOUS';
+    $('receptor-mood').textContent = mood || 'CURIOUS';
+  }
+  updateReceptors(.32, .48, .2, 'CURIOUS');
   function draw() {
     const time = performance.now() / 1000, wave = $('wave'), wctx = wave.getContext('2d'), neural = $('neural'), nctx = neural.getContext('2d');
     wctx.clearRect(0, 0, wave.width, wave.height); wctx.strokeStyle = '#d9b579'; wctx.lineWidth = 2; wctx.beginPath();
