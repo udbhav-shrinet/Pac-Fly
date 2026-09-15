@@ -13,6 +13,18 @@
     { name: 'Beethoven Fifth', artist: 'Beethoven', notes: [64,64,64,60,64,64,64,57,64,64,64,60,64,64,64,57].map(note => [note, .5]) }
   ];
   const audio = { context: null, master: null, volume: .65, timer: null, note: 0, playing: false, trial: 0, epsilon: 1, q: tracks.map(item => item.notes.map(() => new Map())), dopamine: .32, punishment: 0 };
+  let brain = null;
+  let brainBackend = 'CONNECTOME LIF';
+  const brainReady = FullBrainBridge.create().then(value => {
+    brain = value;
+    brainBackend = 'FLYWIRE WHOLE-BRAIN';
+  }).catch(() => FlyNeuralEngine.create('connectome.json').then(value => {
+    brain = value;
+    brainBackend = 'COMPACT CONNECTOME LIF';
+  })).catch(error => {
+    console.error('Virtual fly brain failed to load.', error);
+    throw error;
+  });
   let track = 0;
   const midiToHz = midi => 440 * Math.pow(2, (midi - 69) / 12);
   function setupAudio() {
@@ -59,12 +71,23 @@
   function stopTrack() { clearInterval(audio.timer); audio.playing = false; $('play-track').textContent = '▶'; $('fly').classList.remove('performing'); $('performer-status').textContent = 'FLY IS LISTENING'; }
   function startTrack() {
     setupAudio(); stopTrack(); audio.note = 0; audio.trial++; audio.epsilon = Math.max(.04, 1 - audio.trial / 32); audio.playing = true; $('play-track').textContent = 'Ⅱ';
+    $('status-text').textContent = 'loading virtual brain...';
+    brainReady.then(() => {
+      if (!audio.playing) return;
+      $('status-text').textContent = `${brainBackend} is choosing`;
+      tick();
+    }).catch(() => {
+      stopTrack();
+      $('status-text').textContent = 'virtual brain unavailable';
+    });
     const tick = () => {
       if (!audio.playing) return;
       const notes = tracks[track].notes;
       const targetPair = notes[audio.note % notes.length];
       const target = Math.max(48, Math.min(71, targetPair[0]));
       highlightTarget(target);
+      const sense = { sugarBearing: 0, sugarDist: 1, ghostBearing: 0, ghostDist: null, headingIndex: audio.note % 4, foodOdor: 1, dangerOdor: 0, temperature: .5 };
+      if (brain) brain.update(.1, sense);
       const memory = audio.q[track][audio.note % notes.length];
       const learned = memory.get(target) || 0;
       const explore = Math.random() < audio.epsilon;
@@ -72,6 +95,7 @@
       const correct = midi === target;
       memory.set(midi, (memory.get(midi) || 0) + (correct ? 1 : -.45));
       if (!correct && Math.random() < .55) memory.set(target, (memory.get(target) || 0) + .7);
+      if (brain) correct ? brain.onPelletEaten(false) : brain.onHazardEaten();
       playNote(midi, .48 * targetPair[1], true, correct);
       $('learning-badge').textContent = `EXPLORATION ${Math.round(audio.epsilon * 100)}%`;
       $('trial-count').textContent = `TRIAL ${String(audio.trial).padStart(3, '0')}`;
@@ -82,6 +106,13 @@
       $('emotion-value').textContent = correct ? (audio.dopamine > .72 ? 'JOYFUL' : 'FOCUSED') : (audio.punishment > .55 ? 'FRUSTRATED' : 'CURIOUS');
       $('hormone-value').textContent = `DA ${Math.round(audio.dopamine * 100)} · 5-HT ${Math.round((1 - audio.punishment) * 62)} · OA ${Math.round(audio.punishment * 100)}`;
       $('neuron-value').textContent = `${correct ? 24 : 8 + Math.floor(Math.random() * 10)} / 24 ACTIVE`;
+      if (brain && brain.state) {
+        const neuralState = brain.state;
+        $('neuron-value').textContent = `${Math.round((neuralState.arousalLevel || 0) * 24)} / 24 ACTIVE`;
+        $('hormone-value').textContent = `DA ${Math.round((neuralState.dopamineTransient || 0) * 100)} · 5-HT ${Math.round((1 - (neuralState.ppl1Transient || 0)) * 62)} · OA ${Math.round((neuralState.octopamineLevel || 0) * 100)}`;
+        $('emotion-value').textContent = neuralState.behaviorState || 'FOCUSED';
+        $('status-text').textContent = `${brainBackend} · ${neuralState.behaviorState || 'ACTIVE'}`;
+      }
       audio.note++;
       $('clock').textContent = `${String(Math.floor(audio.note / 2)).padStart(2, '0')}:${String((audio.note * 30) % 60).padStart(2, '0')}`;
       audio.timer = setTimeout(tick, Math.max(260, targetPair[1] * 520));
@@ -98,8 +129,16 @@
     const time = performance.now() / 1000, wave = $('wave'), wctx = wave.getContext('2d'), neural = $('neural'), nctx = neural.getContext('2d');
     wctx.clearRect(0, 0, wave.width, wave.height); wctx.strokeStyle = '#d9b579'; wctx.lineWidth = 2; wctx.beginPath();
     for (let x = 0; x < wave.width; x++) { const y = 65 + Math.sin(x / 38 + time * 2) * 16 + Math.sin(x / 13 + time) * 5; x ? wctx.lineTo(x, y) : wctx.moveTo(x, y); } wctx.stroke();
-    nctx.clearRect(0, 0, neural.width, neural.height); nctx.fillStyle = '#bdcda9';
-    for (let i = 0; i < 30; i++) { const x = (i * 71) % neural.width, y = 18 + ((i * 43) % 92), pulse = 2 + (Math.sin(time * 3 + i) + 1) * 2; nctx.beginPath(); nctx.arc(x, y, pulse, 0, Math.PI * 2); nctx.fill(); }
+    nctx.clearRect(0, 0, neural.width, neural.height);
+    const activity = brain?.activity || brain?.connectome?.calcium;
+    nctx.fillStyle = '#bdcda9';
+    for (let i = 0; i < 30; i++) {
+      const live = activity ? activity[i % activity.length] : (Math.sin(time * 3 + i) + 1) * .5;
+      const x = (i * 71) % neural.width, y = 18 + ((i * 43) % 92), pulse = 2 + Math.min(3, live * 2);
+      nctx.globalAlpha = .35 + Math.min(.65, live);
+      nctx.beginPath(); nctx.arc(x, y, pulse, 0, Math.PI * 2); nctx.fill();
+    }
+    nctx.globalAlpha = 1;
     requestAnimationFrame(draw);
   }
   renderTrack(); draw();
