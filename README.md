@@ -66,6 +66,11 @@ NPF/GF/neuromodulator calibration in this app, so the UI labels those values as
 proxies. Arena heading is the game heading; it is not an inferred biological
 compass state from the whole-brain graph.
 
+The arena now uses an expanded 56x62 logical grid, four times the original
+playable area, with connector openings that add alternate routes. Mobile users
+can switch between Play, Brain, and Signals views, use the on-screen chase
+direction pad, and load Calm, Rush, or Swarm challenge presets.
+
 An energizer creates an 8-second frightened-ghost interval. Capturing a
 frightened ghost awards 200 points and sends a larger reward event to the
 FlyWire bridge; ordinary sugar remains a small reward. The timeline uses

@@ -60,6 +60,25 @@
   }));
   $('clear-sugar').addEventListener('click', () => game.clearSugar());
   $('fill-sugar').addEventListener('click', () => game.fillSugar());
+  $('pause-game').addEventListener('click', event => {
+    game.setPaused(!game.paused);
+    event.currentTarget.textContent = game.paused ? 'Resume' : 'Pause';
+    $('tool-status').textContent = game.paused ? 'Experiment paused' : 'Select a tool, then tap the arena';
+  });
+  $('reset-game').addEventListener('click', () => {
+    game.resetExperiment();
+    $('pause-game').textContent = 'Pause';
+    $('tool-status').textContent = 'Experiment reset';
+  });
+  document.querySelectorAll('[data-challenge]').forEach(button => button.addEventListener('click', () => {
+    const preset = { calm: [0.7, 0.65], rush: [1.35, 1.25], swarm: [1.05, 1.7] }[button.dataset.challenge];
+    $('fly-speed').value = preset[0];
+    $('ghost-speed').value = preset[1];
+    $('fly-speed').dispatchEvent(new Event('input'));
+    $('ghost-speed').dispatchEvent(new Event('input'));
+    document.querySelectorAll('[data-challenge]').forEach(item => item.classList.toggle('active', item === button));
+    $('tool-status').textContent = `${button.textContent} challenge loaded`;
+  }));
   $('human-toggle').addEventListener('click', event => {
     game.setHumanMode(!game.humanMode);
     event.currentTarget.textContent = game.humanMode ? 'Return to brain' : 'Enter chase mode';

@@ -33,10 +33,9 @@ function angleDiff(a, b) {
   return d;
 }
 
-// The original arcade maze, tile-for-tile. Rows 0-2 and 34-35 are the
-// off-screen buffer the ROM's tile engine reserves; the real 28x31
-// playfield is rows [3, 33].
-const MAZE_ROWS = [
+// The base topology is expanded 2x in both axes at load time. This creates a
+// 56x62 arena (4x the playable area) while preserving the known routes.
+const BASE_MAZE_ROWS = [
   "____________________________",
   "____________________________",
   "____________________________",
@@ -75,10 +74,30 @@ const MAZE_ROWS = [
   "____________________________",
 ];
 
-const GRID_W = 28;
-const PLAYFIELD_TOP = 3;
-const PLAYFIELD_ROWS = 31;
-const TUNNEL_ROW = 17;
+const MAZE_SCALE = 2;
+const GRID_W = 28 * MAZE_SCALE;
+const PLAYFIELD_TOP = 3 * MAZE_SCALE;
+const PLAYFIELD_ROWS = 31 * MAZE_SCALE;
+const TUNNEL_ROW = 17 * MAZE_SCALE;
+const MAZE_ROWS = (() => {
+  const rows = [];
+  for (const line of BASE_MAZE_ROWS) {
+    const expanded = [...line].map(char => char.repeat(MAZE_SCALE)).join('');
+    rows.push(expanded, expanded);
+  }
+  // Add connector openings at several wall junctions. These are deliberate
+  // alternate routes, not random holes, and keep the enlarged map traversable.
+  const connectors = [[14, 10], [14, 44], [26, 22], [26, 34], [42, 10], [42, 44], [54, 22], [54, 34]];
+  for (const [row, col] of connectors) {
+    for (let dy = 0; dy < 2; dy++) {
+      const chars = [...rows[row + dy]];
+      chars[col] = '.';
+      chars[col + 1] = '.';
+      rows[row + dy] = chars.join('');
+    }
+  }
+  return rows;
+})();
 
 class PacmanGame {
   /**
@@ -95,9 +114,8 @@ class PacmanGame {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
     this.callbacks = callbacks;
-    // The logical board stays dense (28 x 31); a compact tile keeps the
-    // complete experiment visible alongside the telemetry panels.
-    this.tile = 12;
+    // The enlarged 56 x 62 board remains responsive through CSS max sizing.
+    this.tile = 8;
 
     canvas.width = GRID_W * this.tile;
     canvas.height = PLAYFIELD_ROWS * this.tile;
@@ -122,6 +140,7 @@ class PacmanGame {
     this.frightenedUntil = 0;
     this._invulnerableUntil = 0;
     this.exhausted = false;
+    this.paused = false;
 
     this._buildBoard();
     this._resetActors();
@@ -172,7 +191,7 @@ class PacmanGame {
 
   _resetActors() {
     this.pac = {
-      row: 26, col: 13, // classic start tile, directly beneath the ghost house
+      row: 26 * MAZE_SCALE, col: 13 * MAZE_SCALE,
       moveT: 0,
       dir: 'left', queuedDir: 'left',
       speed: 7.6, // tiles/sec
@@ -180,10 +199,10 @@ class PacmanGame {
     };
 
     const ghostDefs = [
-      { name: 'blinky', color: '#ff0000', row: 14, col: 13, scatter: { row: 3, col: 25 } },
-      { name: 'pinky', color: '#ffb8ff', row: 17, col: 13, scatter: { row: 3, col: 2 } },
-      { name: 'inky', color: '#00ffff', row: 17, col: 14, scatter: { row: 33, col: 27 } },
-      { name: 'clyde', color: '#ffb851', row: 17, col: 12, scatter: { row: 33, col: 0 } },
+      { name: 'blinky', color: '#ff0000', row: 14 * MAZE_SCALE, col: 13 * MAZE_SCALE, scatter: { row: 3 * MAZE_SCALE, col: 25 * MAZE_SCALE } },
+      { name: 'pinky', color: '#ffb8ff', row: 17 * MAZE_SCALE, col: 13 * MAZE_SCALE, scatter: { row: 3 * MAZE_SCALE, col: 2 * MAZE_SCALE } },
+      { name: 'inky', color: '#00ffff', row: 17 * MAZE_SCALE, col: 14 * MAZE_SCALE, scatter: { row: 33 * MAZE_SCALE, col: 27 * MAZE_SCALE } },
+      { name: 'clyde', color: '#ffb851', row: 17 * MAZE_SCALE, col: 12 * MAZE_SCALE, scatter: { row: 33 * MAZE_SCALE, col: 0 } },
     ];
     this.ghosts = ghostDefs.map((g, i) => ({
       ...g,
@@ -231,6 +250,15 @@ class PacmanGame {
 
   setHazardPlacementMode(active) { this.hazardPlacementMode = active; }
   setHumanMode(active) { this.humanMode = Boolean(active); }
+  setPaused(active) { this.paused = Boolean(active); }
+  resetExperiment() {
+    this.score = 0;
+    this.lives = 3;
+    this.frightenedUntil = 0;
+    this.stamina = 1;
+    this._buildBoard();
+    this._resetActors();
+  }
 
   setPlacementMode(mode) {
     if (mode !== 'sugar' && mode !== 'trap') throw new Error(`Unknown placement mode: ${mode}`);
@@ -273,8 +301,8 @@ class PacmanGame {
     for (const ghost of this.ghosts) {
       if (Math.round(ghost.row) === row && Math.round(ghost.col) === col) {
         ghost.inHouse = true;
-        ghost.row = 17;
-        ghost.col = 13;
+        ghost.row = 17 * MAZE_SCALE;
+        ghost.col = 13 * MAZE_SCALE;
         ghost.moveT = 0;
         ghost.leaveAt = performance.now() + 1800;
       }
@@ -320,6 +348,7 @@ class PacmanGame {
   // -------------------------------------------------------------------
 
   update(dt, now) {
+    if (this.paused) return;
     const frozen = now < this.frozenUntil;
 
     if (!frozen) {
@@ -401,14 +430,14 @@ class PacmanGame {
 
   _respawnAfterCatch() {
     const pac = this.pac;
-    pac.row = 26; pac.col = 13; pac.moveT = 0; pac.dir = 'left'; pac.queuedDir = 'left'; pac.resting = false;
+    pac.row = 26 * MAZE_SCALE; pac.col = 13 * MAZE_SCALE; pac.moveT = 0; pac.dir = 'left'; pac.queuedDir = 'left'; pac.resting = false;
     for (let i = 0; i < this.ghosts.length; i++) {
       const g = this.ghosts[i];
       g.inHouse = true;
       g.moveT = 0;
       g.dir = 'up'; g.queuedDir = 'up';
       g.leaveAt = performance.now() + 600 + i * 900;
-      const spawn = [{ row: 14, col: 13 }, { row: 17, col: 13 }, { row: 17, col: 14 }, { row: 17, col: 12 }][i];
+      const spawn = [{ row: 14 * MAZE_SCALE, col: 13 * MAZE_SCALE }, { row: 17 * MAZE_SCALE, col: 13 * MAZE_SCALE }, { row: 17 * MAZE_SCALE, col: 14 * MAZE_SCALE }, { row: 17 * MAZE_SCALE, col: 12 * MAZE_SCALE }][i];
       g.row = spawn.row; g.col = spawn.col;
     }
   }
@@ -676,8 +705,8 @@ class PacmanGame {
     ctx.strokeStyle = '#ffb8ff';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(13 * T, (15 - PLAYFIELD_TOP) * T);
-    ctx.lineTo(15 * T, (15 - PLAYFIELD_TOP) * T);
+    ctx.moveTo(13 * MAZE_SCALE * T, (15 * MAZE_SCALE - PLAYFIELD_TOP) * T);
+    ctx.lineTo(15 * MAZE_SCALE * T, (15 * MAZE_SCALE - PLAYFIELD_TOP) * T);
     ctx.stroke();
   }
 
