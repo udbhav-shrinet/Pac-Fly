@@ -28,6 +28,12 @@
   });
   let track = 0;
   const midiToHz = midi => 440 * Math.pow(2, (midi - 69) / 12);
+  function fitToKeyboard(midi) {
+    let fitted = midi;
+    while (fitted < 48) fitted += 12;
+    while (fitted > 71) fitted -= 12;
+    return fitted;
+  }
   function setupAudio() {
     audio.context ||= new (window.AudioContext || window.webkitAudioContext)();
     audio.master ||= audio.context.createGain();
@@ -38,13 +44,22 @@
   function playNote(midi, duration = .55, performer = false, correct = false) {
     setupAudio();
     const now = audio.context.currentTime;
-    const osc = audio.context.createOscillator();
     const envelope = audio.context.createGain();
-    osc.type = 'triangle'; osc.frequency.value = midiToHz(midi);
+    const fundamental = audio.context.createOscillator();
+    const second = audio.context.createOscillator();
+    const third = audio.context.createOscillator();
+    const mix = audio.context.createGain();
+    fundamental.type = 'triangle'; fundamental.frequency.value = midiToHz(midi);
+    second.type = 'sine'; second.frequency.value = midiToHz(midi) * 2;
+    third.type = 'sine'; third.frequency.value = midiToHz(midi) * 3;
+    mix.gain.value = .7;
     envelope.gain.setValueAtTime(.0001, now);
-    envelope.gain.exponentialRampToValueAtTime(.26, now + .025);
+    envelope.gain.exponentialRampToValueAtTime(.22, now + .012);
     envelope.gain.exponentialRampToValueAtTime(.0001, now + duration);
-    osc.connect(envelope).connect(audio.master); osc.start(now); osc.stop(now + duration + .05);
+    fundamental.connect(mix); second.connect(mix); third.connect(mix);
+    mix.connect(envelope).connect(audio.master);
+    fundamental.start(now); second.start(now); third.start(now);
+    fundamental.stop(now + duration + .05); second.stop(now + duration + .05); third.stop(now + duration + .05);
     const keyIndex = Math.max(0, Math.min(23, midi - 48));
     const key = $('keys').children[keyIndex];
     document.querySelectorAll('.keys button.active').forEach(item => item.classList.remove('active'));
@@ -85,7 +100,7 @@
       if (!audio.playing) return;
       const notes = tracks[track].notes;
       const targetPair = notes[audio.note % notes.length];
-      const target = 48 + ((targetPair[0] - 48) % 24 + 24) % 24;
+      const target = fitToKeyboard(targetPair[0]);
       highlightTarget(target);
       const sense = { sugarBearing: 0, sugarDist: 1, ghostBearing: 0, ghostDist: null, headingIndex: audio.note % 4, foodOdor: 1, dangerOdor: 0, temperature: .5 };
       if (brain) brain.update(.1, sense);
