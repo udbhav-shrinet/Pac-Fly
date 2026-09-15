@@ -12,7 +12,8 @@
     { name: 'Scarborough Fair', artist: 'Traditional', notes: [69,69,72,74,76,74,72,69,67,69,72,74,72,69,67].map(note => [note, 1]) },
     { name: 'Beethoven Fifth', artist: 'Beethoven', notes: [64,64,64,60,64,64,64,57,64,64,64,60,64,64,64,57].map(note => [note, .5]) }
   ];
-  const audio = { context: null, master: null, volume: .65, timer: null, note: 0, playing: false, trial: 0, epsilon: .18, q: tracks.map(item => item.notes.map(() => new Map())), dopamine: .32, punishment: 0 };
+  const audio = { context: null, master: null, volume: .65, timer: null, note: 0, playing: false, trial: 0, epsilon: .04, q: tracks.map(item => item.notes.map(() => new Map())), dopamine: .32, punishment: 0 };
+  const BEAT_MS = 330;
   let brain = null;
   let brainBackend = 'CONNECTOME LIF';
   const brainReady = FullBrainBridge.create().then(value => {
@@ -70,7 +71,7 @@
   }
   function stopTrack() { clearInterval(audio.timer); audio.playing = false; $('play-track').textContent = '▶'; $('fly').classList.remove('performing'); $('performer-status').textContent = 'FLY IS LISTENING'; }
   function startTrack() {
-    setupAudio(); stopTrack(); audio.note = 0; audio.trial++; audio.epsilon = Math.max(.04, .18 - audio.trial * .004); audio.playing = true; $('play-track').textContent = 'Ⅱ';
+    setupAudio(); stopTrack(); audio.note = 0; audio.trial++; audio.epsilon = Math.max(.01, .04 - audio.trial * .001); audio.playing = true; $('play-track').textContent = 'Ⅱ';
     $('status-text').textContent = 'loading virtual brain...';
     brainReady.then(() => {
       if (!audio.playing) return;
@@ -84,7 +85,7 @@
       if (!audio.playing) return;
       const notes = tracks[track].notes;
       const targetPair = notes[audio.note % notes.length];
-      const target = Math.max(48, Math.min(71, targetPair[0]));
+      const target = 48 + ((targetPair[0] - 48) % 24 + 24) % 24;
       highlightTarget(target);
       const sense = { sugarBearing: 0, sugarDist: 1, ghostBearing: 0, ghostDist: null, headingIndex: audio.note % 4, foodOdor: 1, dangerOdor: 0, temperature: .5 };
       if (brain) brain.update(.1, sense);
@@ -96,7 +97,7 @@
       memory.set(midi, (memory.get(midi) || 0) + (correct ? 1 : -.45));
       if (!correct && Math.random() < .55) memory.set(target, (memory.get(target) || 0) + .7);
       if (brain) correct ? brain.onPelletEaten(false) : brain.onHazardEaten();
-      playNote(midi, .48 * targetPair[1], true, correct);
+      playNote(midi, Math.max(.18, .28 * targetPair[1]), true, correct);
       $('learning-badge').textContent = `EXPLORATION ${Math.round(audio.epsilon * 100)}%`;
       $('trial-count').textContent = `TRIAL ${String(audio.trial).padStart(3, '0')}`;
       audio.dopamine = correct ? Math.min(1, audio.dopamine + .12) : Math.max(0, audio.dopamine - .06);
@@ -119,7 +120,7 @@
       }
       audio.note++;
       $('clock').textContent = `${String(Math.floor(audio.note / 2)).padStart(2, '0')}:${String((audio.note * 30) % 60).padStart(2, '0')}`;
-      audio.timer = setTimeout(tick, Math.max(260, targetPair[1] * 520));
+      audio.timer = setTimeout(tick, Math.max(150, targetPair[1] * BEAT_MS));
     };
     tick();
   }
