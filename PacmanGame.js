@@ -142,6 +142,8 @@ class PacmanGame {
     this.exhausted = false;
     this.paused = false;
     this.motorAction = 'RESTING';
+    this.episode = 0;
+    this.recentVisits = new Map();
 
     this._buildBoard();
     this._resetActors();
@@ -191,10 +193,12 @@ class PacmanGame {
   }
 
   _resetActors() {
+    const startDirections = ['left', 'up', 'right', 'down'];
+    const startDir = startDirections[this.episode % startDirections.length];
     this.pac = {
       row: 26 * MAZE_SCALE, col: 13 * MAZE_SCALE,
       moveT: 0,
-      dir: 'left', queuedDir: 'left',
+      dir: startDir, queuedDir: startDir,
       speed: 7.6, // tiles/sec
       resting: false,
     };
@@ -253,10 +257,12 @@ class PacmanGame {
   setHumanMode(active) { this.humanMode = Boolean(active); }
   setPaused(active) { this.paused = Boolean(active); }
   resetExperiment() {
+    this.episode++;
     this.score = 0;
     this.lives = 3;
     this.frightenedUntil = 0;
     this.stamina = 1;
+    this.recentVisits.clear();
     this._buildBoard();
     this._resetActors();
   }
@@ -407,8 +413,8 @@ class PacmanGame {
         if (now < this.frightenedUntil) {
           this.score += 200;
           g.inHouse = true;
-          g.row = 17;
-          g.col = 13;
+          g.row = 17 * MAZE_SCALE;
+          g.col = 13 * MAZE_SCALE;
           g.moveT = 0;
           g.leaveAt = now + 900;
           this.callbacks.onGhostCaught && this.callbacks.onGhostCaught();
@@ -431,7 +437,9 @@ class PacmanGame {
 
   _respawnAfterCatch() {
     const pac = this.pac;
-    pac.row = 26 * MAZE_SCALE; pac.col = 13 * MAZE_SCALE; pac.moveT = 0; pac.dir = 'left'; pac.queuedDir = 'left'; pac.resting = false;
+    this.episode++;
+    const startDir = ['left', 'up', 'right', 'down'][this.episode % 4];
+    pac.row = 26 * MAZE_SCALE; pac.col = 13 * MAZE_SCALE; pac.moveT = 0; pac.dir = startDir; pac.queuedDir = startDir; pac.resting = false;
     for (let i = 0; i < this.ghosts.length; i++) {
       const g = this.ghosts[i];
       g.inHouse = true;
@@ -467,6 +475,14 @@ class PacmanGame {
       const newCol = this.wrapCol(actor.row, actor.col + d.dx);
       actor.row = newRow;
       actor.col = newCol;
+      if (isPac) {
+        const key = `${actor.row},${actor.col}`;
+        this.recentVisits.set(key, (this.recentVisits.get(key) || 0) + 1);
+        if (this.recentVisits.size > 180) {
+          const oldest = this.recentVisits.keys().next().value;
+          this.recentVisits.delete(oldest);
+        }
+      }
       this._tryQueuedTurn(actor, isPac);
     } else if (!openCurrent) {
       // Halted at a wall: still allow the queued direction to release us.
@@ -626,7 +642,10 @@ class PacmanGame {
     let best = candidates[0], bestScore = -Infinity;
     for (const name of candidates) {
       const label = relativeLabel(name);
-      const score = (motor[label] || 0) + Math.random() * 0.02; // tiny biological noise, not a heuristic
+      const d = DIRS[name];
+      const targetKey = `${pac.row + d.dy},${this.wrapCol(pac.row, pac.col + d.dx)}`;
+      const novelty = Math.min(0.28, (this.recentVisits.get(targetKey) || 0) * 0.06);
+      const score = (motor[label] || 0) - novelty + Math.random() * 0.04;
       if (score > bestScore) { bestScore = score; best = name; }
     }
     pac.queuedDir = best;

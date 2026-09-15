@@ -88,6 +88,11 @@ motor card reports the action selected for the current maze decision
 in the aggregated graph is treated as forward exploration; a nearby threat
 adds directional escape drive instead of forcing a perpetual turn.
 
+Each life is an episode: the starting heading varies, a bounded recent-route
+memory penalizes immediate tile replay, and small motor noise breaks exact
+ties. This prevents deterministic death/restart playback while keeping the
+brain's motor scores in control of the available safe choices.
+
 An energizer creates an 8-second frightened-ghost interval. Capturing a
 frightened ghost awards 200 points and sends a larger reward event to the
 FlyWire bridge; ordinary sugar remains a small reward. The timeline uses
