@@ -1,90 +1,123 @@
 # 🪰 Pac-Fly: The Minimal Viable Connectome
 
-**We took a real, synaptically-resolved map of a fruit fly's brain, surgically removed everything except the parts that let it panic and eat, and shipped the rest as 40KB of vanilla JavaScript that plays Pac-Man in your browser tab.**
+**We took a real, synaptically-resolved map of a fruit fly's brain, surgically removed everything except the parts that let it panic and eat, and shipped the rest as a population of independent, `Float32Array`-backed spiking brains running live in your browser tab.**
 
-No PyTorch. No ONNX runtime. No WebGL shaders pretending to be neurons. No server. Just a JSON graph of weighted synapses and a `for` loop doing leaky integrate-and-fire math, 130ms at a time, in a `<canvas>` element.
+No PyTorch. No ONNX runtime. No server. Just a JSON graph of weighted synapses, an OOP simulation engine, and a `for` loop doing leaky integrate-and-fire math on up to 40 flies at once, rendered on a `<canvas>` inside a full computational-biology research dashboard.
 
-[**▶ Play it live**](#) · Zero dependencies · 100% client-side · Runs on GitHub Pages
+Zero dependencies · 100% client-side · Runs on GitHub Pages
 
 ---
 
 ## What is actually happening here
 
-In 2023–2024, the FlyWire Consortium (Princeton, Allen Institute, and a small army of citizen-scientist "flywires") finished reconstructing the **complete synaptic wiring diagram of the adult *Drosophila melanogaster* brain** — roughly 139,000 neurons and ~50 million synapses, imaged at nanometer resolution and traced by hand and machine over years. It is, without exaggeration, one of the most important datasets biology has ever produced. It lives at [codex.flywire.ai](https://codex.flywire.ai) and it is *free and open*.
+In 2023–2024, the FlyWire Consortium (Princeton, Allen Institute, and a small army of citizen-scientist "flywires") finished reconstructing the **complete synaptic wiring diagram of the adult *Drosophila melanogaster* brain** — roughly 139,000 neurons and ~50 million synapses, imaged at nanometer resolution. It's one of the most important datasets biology has ever produced, and it's free at [codex.flywire.ai](https://codex.flywire.ai).
 
-That connectome can tell you, with real synaptic weights, exactly how a photon hitting the fly's eye turns into a wingbeat. It encodes courtship songs, grooming reflexes, circadian rhythm, egg-laying behavior, and the precise wiring of an escape reflex so fast it operates in single-digit milliseconds.
-
-We don't need almost any of that to play Pac-Man.
-
-So we performed a **digital lobotomy**. We pruned the graph down to four circuits and threw the rest of the fly's mind directly in the trash:
+We don't need almost any of that to make a swarm of virtual flies forage and flee. So we performed a **digital lobotomy**, pruning the graph down to four circuits and throwing the rest in the trash:
 
 | Circuit | Kept? | Why |
 |---|---|---|
-| **Antennal Lobe (AL)** | ✅ | Olfactory/gustatory input — "food is near," i.e. hunger drive |
-| **LC4 lobula columnar neurons** | ✅ | Looming-object detectors — "something large is approaching fast" |
-| **Giant Fiber (GF)** | ✅ | The fly's single-neuron panic button — triggers the fastest known escape reflex in the animal kingdom |
-| **Mushroom Body (MB) / dopaminergic neurons** | ✅ | Reward and reinforcement — dopamine spike on sugar consumption |
-| **DNp09 / MDN descending neurons** | ✅ | Forward walking and steering commands to the motor system |
-| Courtship & mating circuits (P1, fruitless⁺ neurons) | ❌ **lobotomized** | The fly does not need to fall in love to eat a dot |
-| Grooming command neurons | ❌ **lobotomized** | It will not stop to clean its legs mid-chase |
-| Circadian clock (PDF neurons) | ❌ **lobotomized** | It does not sleep. It does not know what time it is. It only knows fear and sugar |
-| Egg-laying / oviposition descending neurons | ❌ **lobotomized** | Not applicable to a JSON object |
+| **Antennal Lobe (AL)** | ✅ | Olfactory/gustatory input — hunger drive |
+| **LC4 lobula columnar neurons** | ✅ | Looming-object detectors — "something is closing in fast" |
+| **Giant Fiber (GF)** | ✅ | The fly's single-neuron panic button — the fastest escape reflex in the animal kingdom |
+| **Mushroom Body (MB) / dopaminergic neurons** | ✅ | Reward and reinforcement |
+| **DNp09 / MDN descending neurons** | ✅ | Steering and forward-walking motor commands |
+| Courtship, grooming, circadian, oviposition circuits | ❌ **lobotomized** | Not relevant to being chased around a petri dish |
 
-What's left is **268 neurons and 612 synapses** — a structurally faithful *subset* of the real regional wiring topology (real convergence ratios from antennal lobe → mushroom body, real LC4 → Giant Fiber funneling, real GF → DN command architecture), small enough to simulate at 60fps on a phone.
+What's left is **268 neurons and 612 synapses** per fly — small enough that dozens of independent instances run at once without breaking a sweat.
 
-## The model: this is not a "neural network" in the ML sense
+## Architecture: a real multi-agent engine, not a monolith
 
-There is no backprop. There is no training loop. There are no weights learned from data. This is **not a neural net that was trained to play Pac-Man** — that's the boring, done-to-death version of this idea.
+Version 2 rebuilt the whole thing around four decoupled classes so a *population* of distinct brains could run simultaneously without stepping on each other or the frame rate:
 
-Every synapse weight in `pruned_connectome.json` is a hand-preserved approximation of the *actual regional connection strength* reported in the FlyWire/hemibrain literature — AL projection neurons fan out to Kenyon cells at realistic convergence ratios, LC4 neurons pool onto the Giant Fiber the way looming detectors really do, and the Giant Fiber really does send an inhibitory side-channel back into the dopaminergic reward system (real flies stop caring about sugar mid-panic; so does ours — that's not a hardcoded rule, that's a `-0.4` inhibitory edge doing its job).
+```
+SimulationManager   the root loop — fixed 100ms timestep accumulator,
+                     canvas rendering, UI wiring, analytics, CSV export
 
-`brain.js` runs this graph as a **Leaky Integrate-and-Fire (LIF) spiking network**:
+Environment          spatial hashing for fast proximity queries, the
+                     sugar gradient field, predator (Ghost) state
+
+FlyAgent              physical body: continuous-space kinematics, energy
+                      budget, sensory gathering, motor execution
+
+Connectome            the isolated neural network — graph topology is
+                      parsed ONCE and shared; every fly gets its own
+                      Float32Array of synaptic weights, membrane
+                      potentials, and refractory state
+```
+
+`Connectome` intentionally separates **shape** (which neurons connect to which — identical across the population, computed once) from **weights** (how strongly — unique per fly, mutable, inheritable). That's what makes 40 simultaneous brains cheap: the expensive bookkeeping happens once, and each tick is just two flat-array passes (`O(neurons)` leak/threshold, `O(synapses)` propagation) per fly, no allocation, no garbage collector stalls.
+
+## The LIF model
+
+Every tick, exactly two kinds of current get injected into each fly's sensory neurons from the outside world — nothing else touches the network:
 
 ```
 v(t+1) = v(t) · τ_membrane + I_external(t)
 if v(t+1) >= threshold: SPIKE, propagate weight to postsynaptic neurons, enter refractory period
 ```
 
-Every tick, exactly two things get injected as electrical current from the outside world:
+- **Sugar proximity → Antennal Lobe** sensory neurons
+- **Ghost proximity/heading → LC4** sensory neurons (or rerouted — see Sensory Mutations below)
 
-- **Ghost proximity/velocity → LC4 sensory neurons** (looming visual stimulus)
-- **Sugar proximity → Antennal Lobe sensory neurons** (olfactory/gustatory stimulus)
+Everything downstream — the Giant Fiber's escape response, the Mushroom Body's dopamine spike on capture, panic suppressing hunger via a real inhibitory GF → MB synapse — is emergent graph propagation, not scripted behavior. The only things game code is allowed to touch are inputs (sensory current) and outputs (reading `DNp09`/`MDN`/`GF` activation to drive the body).
 
-That current propagates through real synaptic weights — AL → Mushroom Body → descending neurons on one path, LC4 → Giant Fiber → descending neurons on the other — with zero game-specific "if ghost near, flee" logic anywhere in the propagation step. The Giant Fiber's escape response, the dopamine spike on sugar consumption, the panic-suppresses-hunger behavior — none of it is scripted. It falls out of the graph.
+## The Arena
 
-The only things `game.js` is allowed to touch are the **inputs** (what current goes into sensory neurons) and the **outputs** (reading `DNp09`, `MDN_L`, `MDN_R` activation to decide a grid direction, and `GF` firing state to decide panic mode). Everything in between is the fly's business.
+A grid-lined petri dish. Flies render as directional triangles with fading motion trails so you can read velocity and trajectory at a glance; color shifts from amber (healthy) through orange to red as energy depletes. Ghosts are continuous-motion predators with their own heading vector. A toggleable **pheromone heatmap** overlay blends the live sugar gradient (green) against predator threat radii (red) across the whole canvas.
 
-## Behavior you'll actually observe
+## Neural Telemetry — tracks whichever fly you click
 
-- **Normal foraging**: AL activity rises as the fly nears a sugar dot, Mushroom Body dopamine spikes on capture, DN steering biases toward the gradient.
-- **Looming threat**: as a ghost closes distance, LC4 activity ramps non-linearly (closing velocity matters, not just proximity — exactly like the real looming-detector literature).
-- **Giant Fiber threshold crossing (Panic > 80%)**: the fly's `GF` neuron fires. When it does:
-  - Hunger-seeking is *suppressed* (a real inhibitory synapse from GF into the dopaminergic neurons, not an `if` statement)
-  - Movement speed increases ~1.5x (real Giant Fiber circuits drive the fastest motor output the animal has)
-  - Steering gets erratic, zig-zagging noise injected into the direction choice — a crude approximation of real evasive flight kinematics, which are famously non-linear and hard to predict (this is why you can't swat a fly)
+Click any fly in the arena to select it. The right-hand panel switches to a live read of *that* fly's brain:
 
-You are not watching a game AI. You are watching a spiking network with a sugar addiction and an active fear response.
+- **Oscilloscopes** — rolling waveforms for AL (cyan), LC4 (red), MB (amber), DN (white)
+- **Spike raster plot** — the classic neurobiology scatter: 12 key neurons on the Y-axis, the last 5 seconds on the X-axis, a dot every time one crosses threshold
+- **Live connectome graph** — a node-link miniature of the selected fly's actual brain, nodes flashing white on spike
 
-## God Mode
+## Population Analytics
 
-You don't control the fly. You control its universe:
+- **Energy histogram** — live distribution of energy across the whole swarm
+- **Survival curve** — population size over simulated time (a Kaplan–Meier-style decay as flies are eaten, starve, or get culled)
+- **Spatial density heatmap** — where the swarm has actually been spending its time
 
-- **`+ Add Ghost`** — inject a new predator, up to 6, spawned in the corners
-- **`− Remove Ghosts`** — mercy
-- **`+ Drop Sugar`** — scatter a fresh batch of reward stimuli across the maze
-- **`− Clear Sugar`** — induce famine, watch AL activity flatline
+## God Controls
 
-Every action you take becomes real sensory current in a real (pruned) biological circuit, one animation frame later.
+**Population** — `+ Spawn Fly` (randomized baseline weights, or sampled from the Fit Roster) · `− Cull Fly` (removes the lowest-energy fly) · an Injection Target selector (`All Flies` / `Selected Fly`) that scopes everything below it.
+
+**Neuromodulators** — direct neurochemical overrides on the target:
+- **Inject Adrenaline** — pins LC4/GF activation to maximum, forces ~1.5x speed and 3x energy drain, erratic evasive steering, for 4 seconds
+- **Inject Fasting Hormone** — drops energy to 10% and scales AL synaptic gain 1.8x, for 6 seconds — desperate, threat-ignoring foraging
+- **Trigger Dopamine Spike** — locks the current motor output in place for 3 seconds, producing compulsive repetitive looping
+
+**Environment** — ghosts, sugar blooms, and the pheromone heatmap toggle.
+
+**Data** — one-click **CSV export** of the selected fly's full telemetry history (`tick, time_s, AL_state, LC4_state, MB_state, DN_output`).
+
+## Sensory Mutations — behavioral inversion, live
+
+A radio group controls how ghost coordinates get routed into the sensory layer for every fly, in real time:
+
+- **Mode A — Biological Standard**: ghosts → LC4 (threat), sugar → AL (food). Normal prey behavior.
+- **Mode B — Apex Predator**: ghost position is inverted and routed into AL instead, bypassing LC4 entirely — the fly perceives predators as a giant moving sugar source and chases them.
+- **Mode C — Optic Flow Stealth**: computes the dot product of each ghost's forward vector against the ghost→fly vector. Behind the ghost's field of view → routed to AL (stalk). Ghost turning to face the fly → snaps to LC4 (panic). Flies creep up behind predators and scatter the instant they're "seen."
+
+## Fitness Roster — a lightweight evolutionary loop
+
+Any fly that survives 60 simulated seconds has its weight vector snapshotted into a capped Fit Roster. New spawns have a 50% chance of sampling a roster genome (with small Gaussian mutation) instead of a fully random baseline — so the population's baseline wiring drifts toward whatever survived, one reboot at a time.
+
+## Event Log
+
+A scrolling console logs every biologically meaningful event as it happens: spawns, culls, captures, starvation, roster credits, mode switches, neuromodulator injections.
 
 ## Stack
 
-- `index.html` — semantic, accessible markup, zero build step
-- `styles.css` — dark-mode lab aesthetic, CSS variables, responsive grid/flex, no framework
-- `pruned_connectome.json` — the graph: 268 nodes, 612 weighted synapses, region metadata, LIF parameters
-- `brain.js` — the LIF engine: loads the graph, injects stimuli, propagates spikes, exposes motor readout
-- `game.js` — canvas rendering, maze/entity state, sensory encoding, motor decoding, God Controls, telemetry charts
+- `index.html` / `styles.css` — semantic markup, dark computational-biology dashboard aesthetic, zero build step
+- `pruned_connectome.json` — the shared graph: 268 nodes, 612 weighted synapses, region metadata, LIF parameters
+- `connectome.js` — the `Connectome` class: static shared topology + per-instance `Float32Array` weights/state
+- `environment.js` — the `Environment` class: `SpatialHash`, sugar sources, ghost AI, heatmap field
+- `flyAgent.js` — the `FlyAgent` class: kinematics, energy, sensing, neuromodulator overrides
+- `simulation.js` — the `SimulationManager` class: fixed-timestep loop, rendering, all UI wiring, analytics, CSV export, fitness roster
 
-No `npm install`. No bundler. Open `index.html` or push to GitHub Pages and it just runs.
+No `npm install`. Open `index.html` or push to GitHub Pages and it runs.
 
 ## Run it
 
@@ -95,13 +128,9 @@ python3 -m http.server 8000
 # open http://localhost:8000
 ```
 
-Or just serve the four files from any static host. It's 2026 and this repo still doesn't need a `package.json`.
-
 ## On scientific honesty
 
-This is a **structurally accurate, illustratively pruned subset**, not a database dump of the actual 139,000-neuron FlyWire connectome — that dataset is tens of gigabytes and belongs in a proper connectomics pipeline (see [codex.flywire.ai](https://codex.flywire.ai) and the [FlyWire papers](https://www.nature.com/articles/s41586-024-07558-y) for the real thing). What's preserved here is the *topology and relative synaptic weighting* of the specific circuits named above — enough to demonstrate that biologically-grounded spiking networks, not hand-authored game AI, can drive believable, emergent survival behavior in a browser tab.
-
-If you're a connectomics researcher and this made you wince even slightly, good — that means we got the important parts right.
+This is a **structurally accurate, illustratively pruned subset**, not a database dump of the real 139,000-neuron FlyWire connectome — that dataset is tens of gigabytes and belongs in a proper connectomics pipeline (see [codex.flywire.ai](https://codex.flywire.ai) and the [FlyWire paper](https://www.nature.com/articles/s41586-024-07558-y)). What's preserved here is the *topology and relative synaptic weighting* of the specific circuits named above — enough to demonstrate that biologically-grounded spiking networks, not hand-authored game AI, can drive believable, emergent survival behavior for an entire population in a browser tab.
 
 ## License
 
