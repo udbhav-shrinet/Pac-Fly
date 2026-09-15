@@ -82,6 +82,7 @@ class FlyNeuralEngine {
    * @returns {{left:number,right:number,forward:number,reverse:number,rest:boolean}|null} motor scores, or null if no tick ran this frame
    */
   update(dt, sense) {
+    this.latestSenses = sense;
     this._tickAccum += dt;
     let motor = null;
     while (this._tickAccum >= FlyNeuralEngine.TICK_SECONDS) {
@@ -105,12 +106,13 @@ class FlyNeuralEngine {
       c.injectPopulation('ORN_sugar_R', prox * (0.25 + Math.max(0, Math.sin(b))));
     }
 
-    // Looming (ghost): visual (LC4) + auditory-proxy (LPLC2). Wired
+    // Looming (ghost): visual (LC4) plus simulated substrate-vibration
+    // channel (LPLC2 proxy). This is an environmental model, not audio.
     // contralaterally downstream (see build-connectome.js) so a threat on
     // the left drives a RIGHT turn command automatically — the network's
     // own wiring produces the "turn away" behavior, not game code.
     if (sense.ghostDist != null) {
-      const prox = clamp01(1 - sense.ghostDist / 9);
+      const prox = clamp01(sense.dangerOdor ?? (1 - sense.ghostDist / 9));
       const b = sense.ghostBearing;
       const leftMag = prox * (0.2 + Math.max(0, -Math.sin(b)));
       const rightMag = prox * (0.2 + Math.max(0, Math.sin(b)));
@@ -118,11 +120,15 @@ class FlyNeuralEngine {
       c.injectPopulation('LC4_R', rightMag);
       c.injectPopulation('LPLC2_L', leftMag * 0.6);
       c.injectPopulation('LPLC2_R', rightMag * 0.6);
+      c.injectPopulation('LPLC2_L', (sense.vibration || 0) * 0.2);
+      c.injectPopulation('LPLC2_R', (sense.vibration || 0) * 0.2);
     }
 
     // Hunger: a small constant metabolic drive every tick; NPF's own tau
     // (0.995) is what makes this integrate slowly instead of decaying.
     c.injectPopulation('NPF', 0.012);
+    c.injectPopulation('OA_VPM', (sense.temperature || 0.5) * 0.01);
+    c.injectPopulation('PPL1_DAN', (sense.contact || 0) * 0.8);
 
     // Heading compass: reinforce whichever EPG cell matches current facing.
     c.injectNeuron(`EPG_${sense.headingIndex}`, 0.35);

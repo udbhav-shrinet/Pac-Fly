@@ -74,6 +74,14 @@ Signals also includes a selectable live-history graph for hunger, threat,
 reward, arousal, or stamina, alongside the drive radar, threat/reward bubble,
 and state-duration strip.
 
+The arena supplies a richer **simulated fly sensory field**: line-of-sight
+optic cues, food and threat odor gradients, moving-ghost substrate vibration
+(the game's audio-like channel), mechanosensory/contact events, antenna-like
+nearby sensing, temperature/light/humidity context, proprioception, and a
+four-way compass cue. These are game-environment models mapped into neural
+populations; the app does not claim literal camera vision, microphone hearing,
+or validated sensory physiology.
+
 An energizer creates an 8-second frightened-ghost interval. Capturing a
 frightened ghost awards 200 points and sends a larger reward event to the
 FlyWire bridge; ordinary sugar remains a small reward. The timeline uses
@@ -90,7 +98,7 @@ Four things, cleanly separated, bridged by one small file:
 
 2. **`Connectome.js`** — the actual brain. Fetches and parses `connectome.json`, then runs a real leaky integrate-and-fire (LIF) simulation over it: `v[t+1] = v[t]·τ + I_external + I_synaptic`, threshold, spike, one-tick synaptic delay, refractory period, all as flat typed arrays. `injectPopulation()` / `injectNeuron()` push sensory current in; `populationActivity()` / `populationVoltage()` read it back out. This file has never heard of Pac-Man, ghosts, or sugar — it only knows neurons and synapses.
 
-3. **`PacmanGame.js`** — the arcade body. The real 28×31 tile maze from the original ROM, double-stroke neon-blue walls, the ghost house, the horizontal warp tunnel, tile-snapped movement (Pac-Man can only turn when centered on a tile intersection, exactly like 1980), and four ghosts running the *actual* classic targeting algorithm (Blinky chases directly, Pinky ambushes 4 tiles ahead, Inky reflects Blinky's position through a point ahead of Pac-Man, Clyde chases-then-flees on a distance threshold). Every decision point it hands `callbacks.brainTick(sense)` a sensory snapshot — bearing and distance to the nearest sugar, bearing and distance to the nearest sensed ghost, current heading — and reads back `{left, right, forward, reverse, rest}` motor scores. **It never decides direction itself.**
+3. **`PacmanGame.js`** — the arcade body. An expanded 56×62 tile maze derived from the original topology, with alternate connector routes, double-stroke neon-blue walls, a ghost house, warp tunnel, tile-snapped movement, and four ghosts running the classic targeting algorithm. Every decision point it hands `callbacks.brainTick(sense)` a simulated sensory field—optic visibility, odor gradients, vibration, contact, temperature/light context, proprioception, and compass heading—and reads back `{left, right, forward, reverse, rest}` motor scores. **It never decides direction itself.**
 
 4. **`FlyNeuralEngine.js` + `BrainVisualizer.js`** — the thin biologically-named wrapper (injects sensory current, steps the network on a fixed 100ms cadence, derives dashboard readouts from population activity) and the Three.js viewport that renders five of those populations as glowing, GCaMP-calcium-style 3D structures.
 
@@ -102,7 +110,7 @@ No `if (ghostNear) fleeDirection = ...` exists anywhere in this codebase. Instea
 
 1. `PacmanGame` computes the *physically safe* candidate directions (walls excluded always; a ghost's own tile or a known bitter-trap tile excluded whenever any alternative exists — a hard rule, not a heuristic).
 2. It measures the signed bearing and distance to the nearest pellet and nearest sensed ghost, relative to Pac-Man's current heading, and calls `engine.update(dt, sense)`.
-3. Inside `FlyNeuralEngine`, that sensory data is injected as current into `ORN_sugar_L/R` (olfactory) and `LC4_L/R` + `LPLC2_L/R` (visual looming + an auditory-proxy population), split left/right by bearing sign. The network is stepped once.
+3. Inside `FlyNeuralEngine`, that sensory data is injected as current into olfactory, visual-looming, vibration/mechanosensory, thermosensory, nociceptive, hunger, and compass populations, split left/right by bearing sign. The network is stepped once.
 4. The LIF dynamics propagate: `ORN → PN → KC → MBON_approach → DNp09_fwd` for foraging; `LC4/LPLC2 → GF → DNa_left/right, DNp09_fwd, MDN_escape` for escape — and **`GF → MBON_approach` is an inhibitory synapse with a larger magnitude than the reward pathway's own gain**, which is *why* fleeing dominates foraging. That priority is an emergent property of synaptic weight, not a branch in game code.
 5. Motor populations (`DNa_left`, `DNa_right`, `DNp09_fwd`, `MDN_escape`) are read back as calcium-integrated activity (see below) and returned to `PacmanGame`, which maps them onto whichever safe candidate direction is relatively left/right/straight/reverse from the current heading, and picks the highest score.
 6. If both `forward` and `reverse` motor drive come back below threshold *and* the fly isn't currently escaping, `rest: true` is returned — Pac-Man simply stops. No forced constant motion. This is checked twice: once by the network's own low-forward-drive readout, and once more as a hard safety override in `PacmanGame` that never honors `rest` with a predator within 5 tiles, regardless of what the network says that instant.

@@ -75,16 +75,25 @@ class FullBrainBridge {
 
   update(dt, sense) {
     if (!this.ready) return null;
+    this.latestSenses = sense;
     this.headingAngle = sense.headingIndex * Math.PI / 2;
     this._accum += dt;
     if (this._accum >= 0.1) {
       this._accum -= 0.1;
-      const sugar = sense.sugarDist == null ? 0 : Math.max(0, 1 - sense.sugarDist / 12);
-      const threat = sense.ghostDist == null ? 0 : Math.max(0, 1 - sense.ghostDist / 9);
+      const sugar = sense.foodOdor ?? (sense.sugarDist == null ? 0 : Math.max(0, 1 - sense.sugarDist / 12));
+      const threat = sense.dangerOdor ?? (sense.ghostDist == null ? 0 : Math.max(0, 1 - sense.ghostDist / 9));
+      const visualThreat = (sense.threatVisible ?? 0) * threat;
+      const vibration = sense.vibration ?? 0;
+      const contact = sense.contact ?? 0;
       this._stimulate(
-        ['OLF_ORN_FOOD', 'OLF_ORN_DANGER', 'VIS_LC', 'MECH_CHORD', 'DRIVE_HUNGER'],
-        [sugar * 1.5, threat * 1.8, threat * 1.4, 0.45, 0.18]
+        ['OLF_ORN_FOOD', 'OLF_ORN_DANGER', 'VIS_LC', 'MECH_CHORD', 'MECH_BRISTLE', 'ANTENNAL_MECH', 'DRIVE_HUNGER'],
+        [sugar * 1.5, threat * 1.8, visualThreat * 1.4, vibration * 0.8, contact * 1.8, (sense.proprioception?.turning ? 0.4 : 0.12), 0.18]
       );
+      this._stimulate(['THERMO_WARM', 'THERMO_COOL', 'NOCI'], [
+        Math.max(0, sense.temperature - 0.5) * 0.8,
+        Math.max(0, 0.5 - sense.temperature) * 0.8,
+        Math.max(contact, sense.hazardProximity ?? 0) * 0.7,
+      ]);
       // Tonic central-complex activity prevents a structurally sparse
       // subgraph from falling permanently silent between sensory events.
       this._stimulate(['CX_FC', 'CX_EPG'], [0.22, 0.12]);
@@ -124,6 +133,7 @@ class FullBrainBridge {
       ppl1Transient: Math.min(1, this._activity('MB_DAN_PUN') / 5),
       giantFiberFiring: fear > 0, stunned: false, disgusted: false, exhausted: false,
       behaviorState: fear > 0 ? 'ESCAPE' : hunger > 0 ? 'FORAGING' : 'ALERT',
+      senses: this.latestSenses || {},
       drives,
     };
   }

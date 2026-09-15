@@ -168,6 +168,11 @@
     $('val-npf').textContent = `${Math.round(s.npfLevel * 100)}%`; $('val-panic').textContent = `${Math.round(s.panicLevel * 100)}%`; $('val-dopamine').textContent = `${Math.round(s.dopamineTransient * 100)}%`; $('val-stamina').textContent = `${Math.round(game.stamina * 100)}%`;
     $('meter-npf').style.width = `${clamp(s.npfLevel) * 100}%`; $('meter-panic').style.width = `${clamp(s.panicLevel) * 100}%`; $('meter-dopamine').style.width = `${clamp(s.dopamineTransient) * 100}%`; $('meter-stamina').style.width = `${clamp(game.stamina) * 100}%`;
     $('state-ticker').textContent = s.behaviorState; $('state-ticker').style.color = colors[s.behaviorState] || colors.ALERT; $('state-log').textContent = lastState === s.behaviorState ? $('state-log').textContent : `${lastState || 'BOOT'} → ${s.behaviorState}`;
+    const senses = engine && engine.latestSenses ? engine.latestSenses : {};
+    $('sense-vision').textContent = `VISION ${Math.round(Math.max(senses.foodVisible || 0, senses.threatVisible || 0) * 100)}%`;
+    $('sense-odor').textContent = `ODOR ${Math.round(Math.max(senses.foodOdor || 0, senses.dangerOdor || 0) * 100)}%`;
+    $('sense-vibration').textContent = `VIBRATION ${Math.round((senses.vibration || 0) * 100)}%`;
+    $('sense-touch').textContent = `TOUCH ${Math.round(Math.max(senses.contact || 0, senses.hazardProximity || 0) * 100)}%`;
     $('arousal-pct').textContent = `${Math.round(s.arousalLevel * 100)}%`; $('motor-action').textContent = `ARENA HEADING ${Math.round(s.headingAngle * 180 / Math.PI)}°`; $('gf-status').textContent = `ESCAPE PROXY · ${s.giantFiberFiring ? 'ACTIVE' : 'IDLE'}`; $('disgust-flag').textContent = s.disgusted ? 'AVERSIVE PROXY ACTIVE' : 'AVERSIVE PROXY QUIET'; $('stat-score').textContent = game.score; $('stat-lives').textContent = game.lives;
     if (engine instanceof FullBrainBridge && engine.latest) $('brain-status').textContent = `FLYWIRE • 139,255 neurons • TICK ${engine.latest.tickCount}`;
     drawRadar(s); drawScatter(s); drawTrend(); drawAvatar(s); requestAnimationFrame(loop);

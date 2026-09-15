@@ -491,6 +491,16 @@ class PacmanGame {
     return best;
   }
 
+  _lineOfSight(row, col, targetRow, targetCol) {
+    const steps = Math.max(Math.abs(targetRow - row), Math.abs(targetCol - col));
+    for (let i = 1; i < steps; i++) {
+      const r = Math.round(row + (targetRow - row) * i / steps);
+      const c = Math.round(col + (targetCol - col) * i / steps);
+      if (!this.isFloor(r, this.wrapCol(r, c))) return false;
+    }
+    return true;
+  }
+
   /**
    * Pac-Man has no player input and no distance-scoring heuristic either.
    * Every decision point, this method (1) works out which directions are
@@ -540,9 +550,13 @@ class PacmanGame {
     });
     if (notOntoHazard.length > 0) candidates = notOntoHazard;
 
-    // --- Sense: bearing/distance to nearest sugar and nearest ghost -----
+    // --- Simulated fly sensory field -------------------------------------
+    // These are environmental channels, not raw pixels/audio: the game
+    // models compound gradients, optic looming, substrate vibration,
+    // contact, proprioception, temperature, and compass cues.
     const pellet = this._nearestPelletFrom(pac.row, pac.col);
     let sugarBearing = null, sugarDist = null;
+    const sugarVisible = pellet && this._lineOfSight(pac.row, pac.col, pellet.row, pellet.col);
     if (pellet) {
       sugarDist = Math.abs(pellet.row - pac.row) + Math.abs(pellet.col - pac.col);
       const targetAngle = Math.atan2(pellet.row - pac.row, pellet.col - pac.col);
@@ -556,13 +570,38 @@ class PacmanGame {
       if (d < nearestGhostDist) { nearestGhostDist = d; nearestGhost = g; }
     }
     let ghostBearing = null, ghostDist = null;
-    if (nearestGhost && nearestGhostDist < 9) {
+    const threatVisible = nearestGhost && this._lineOfSight(pac.row, pac.col, nearestGhost.row, nearestGhost.col);
+    if (nearestGhost && nearestGhostDist < 12) {
       ghostDist = nearestGhostDist;
       const targetAngle = Math.atan2(nearestGhost.row - pac.row, nearestGhost.col - pac.col);
       ghostBearing = angleDiff(targetAngle, DIRS[pac.dir].angle);
     }
 
-    const sense = { sugarBearing, sugarDist, ghostBearing, ghostDist, headingIndex: DIR_INDEX[pac.dir] };
+    let nearbyHazard = 0;
+    for (const key of this.hazards.keys()) {
+      const [r, c] = key.split(',').map(Number);
+      nearbyHazard = Math.max(nearbyHazard, Math.max(0, 1 - Math.hypot(r - pac.row, c - pac.col) / 8));
+    }
+    const vibration = this.ghosts.reduce((total, ghost) => {
+      if (ghost.inHouse) return total;
+      return total + Math.max(0, 1 - Math.hypot(ghost.row - pac.row, ghost.col - pac.col) / 14) * (0.45 + ghost.moveT * 0.55);
+    }, 0);
+    const temperature = 0.5 + 0.18 * Math.sin(performance.now() / 18000);
+    const contact = nearbyHazard > 0.85 || (nearestGhost && nearestGhostDist < 1.1) ? 1 : 0;
+    const sense = {
+      sugarBearing, sugarDist, ghostBearing, ghostDist,
+      foodOdor: pellet ? Math.max(0, 1 - sugarDist / 18) : 0,
+      dangerOdor: nearestGhost ? Math.max(0, 1 - nearestGhostDist / 18) : 0,
+      foodVisible: sugarVisible ? 1 : 0,
+      threatVisible: threatVisible ? 1 : 0,
+      vibration: Math.min(1, vibration),
+      contact, hazardProximity: nearbyHazard,
+      proprioception: { heading: DIR_INDEX[pac.dir], speed: pac.resting ? 0 : this.flySpeedScale, turning: pac.queuedDir !== pac.dir },
+      temperature,
+      humidity: 0.5,
+      lightLevel: threatVisible || sugarVisible ? 0.75 : 0.42,
+      headingIndex: DIR_INDEX[pac.dir],
+    };
     const motor = this.callbacks.brainTick ? this.callbacks.brainTick(sense, dt) : null;
     if (!motor) return; // no fixed-timestep brain tick landed this frame — hold the current decision
 
