@@ -133,6 +133,7 @@ class FullBrainBridge {
   }
 
   onHazardEaten() { this._stimulate(['GUS_GRN_BITTER', 'MB_DAN_PUN'], [1.4, 1]); }
+  onGhostCaught() { this._stimulate(['MB_DAN_REW', 'MB_MBON_APP'], [2.4, 1.5]); }
   onCaught() { this._stimulate(['MECH_BRISTLE', 'DRIVE_FEAR', 'DN_STARTLE'], [1, 1, 1]); }
   isGiantFiberFiring() { return this.state.giantFiberFiring; }
 }

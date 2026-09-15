@@ -66,6 +66,12 @@ NPF/GF/neuromodulator calibration in this app, so the UI labels those values as
 proxies. Arena heading is the game heading; it is not an inferred biological
 compass state from the whole-brain graph.
 
+An energizer creates an 8-second frightened-ghost interval. Capturing a
+frightened ghost awards 200 points and sends a larger reward event to the
+FlyWire bridge; ordinary sugar remains a small reward. The timeline uses
+state-transition durations across its recent 12.6-second window rather than
+claiming long-term behavioral occupancy.
+
 ---
 
 ## What this actually is

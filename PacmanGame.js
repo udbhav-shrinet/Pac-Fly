@@ -86,6 +86,7 @@ class PacmanGame {
    * @param {{
    *   brainTick?: (sense: {sugarBearing:?number, sugarDist:?number, ghostBearing:?number, ghostDist:?number, headingIndex:number}) => ({left:number,right:number,forward:number,reverse:number,rest:boolean}|null),
    *   onPelletEaten?: (isEnergizer:boolean) => void,
+   *   onGhostCaught?: () => void,
    *   onHazardEaten?: () => void,
    *   onCaught?: () => void,
    * }} callbacks
@@ -118,6 +119,7 @@ class PacmanGame {
     this.flySpeedScale = 1;
     this.ghostSpeedScale = 1;
     this.catchFlashUntil = 0;
+    this.frightenedUntil = 0;
     this._invulnerableUntil = 0;
     this.exhausted = false;
 
@@ -372,6 +374,16 @@ class PacmanGame {
       const gPx = this._actorPixel(g);
       const dist = Math.hypot(pacPx.px - gPx.px, pacPx.py - gPx.py);
       if (dist < this.tile * 0.6) {
+        if (now < this.frightenedUntil) {
+          this.score += 200;
+          g.inHouse = true;
+          g.row = 17;
+          g.col = 13;
+          g.moveT = 0;
+          g.leaveAt = now + 900;
+          this.callbacks.onGhostCaught && this.callbacks.onGhostCaught();
+          continue;
+        }
         this.lives = Math.max(0, this.lives - 1);
         this.catchFlashUntil = now + 700;
         this.freezeFor(650);
@@ -603,6 +615,7 @@ class PacmanGame {
       const kind = this.pellets.get(key);
       this.pellets.delete(key);
       this.score += kind === 'energizer' ? 50 : 10;
+      if (kind === 'energizer') this.frightenedUntil = now + 8000;
       this.callbacks.onPelletEaten && this.callbacks.onPelletEaten(kind === 'energizer');
       if (this.pellets.size === 0) this._buildBoard();
     }
@@ -755,6 +768,10 @@ class PacmanGame {
       ctx.save();
       ctx.translate(px, py);
       ctx.fillStyle = g.color;
+      if (performance.now() < this.frightenedUntil) {
+        ctx.fillStyle = '#3159d8';
+        ctx.shadowColor = '#5d8cff';
+      }
       ctx.shadowColor = g.color;
       ctx.shadowBlur = 5;
       ctx.beginPath();

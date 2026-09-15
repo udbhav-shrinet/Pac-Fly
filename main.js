@@ -3,10 +3,16 @@
   let engine = null;
   const fallback = { headingAngle: 0, npfLevel: .2, dopamineTransient: 0, panicLevel: 0, octopamineLevel: 0, arousalLevel: .1, ppl1Transient: 0, giantFiberFiring: false, disgusted: false, exhausted: false, behaviorState: 'GROOMING', drives: { foraging: .2, escape: 0, explore: .35, rest: .8 } };
   const state = () => engine ? engine.state : fallback;
+  let ghostRewards = 0;
   const game = new PacmanGame(document.getElementById('arcade-canvas'), {
     brainTick: (sense, dt) => engine ? engine.update(dt, sense) : null,
     onPelletEaten: kind => engine && engine.onPelletEaten && engine.onPelletEaten(kind),
     onHazardEaten: () => engine && engine.onHazardEaten && engine.onHazardEaten(),
+    onGhostCaught: () => {
+      ghostRewards++;
+      $('reward-flag').textContent = `GHOST REWARD · ${ghostRewards}`;
+      engine && engine.onGhostCaught && engine.onGhostCaught();
+    },
     onCaught: () => engine && engine.onCaught && engine.onCaught(),
   });
   game.start();
@@ -82,17 +88,33 @@
     ctx.clearRect(0, 0, w, h); ctx.save(); ctx.translate(w / 2, h / 2 + 7); ctx.rotate(lean); ctx.fillStyle = 'rgba(90,210,230,.17)'; ctx.strokeStyle = '#74e9ee'; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.ellipse(-25, -8, 28, 10, -.35, 0, Math.PI * 2); ctx.ellipse(25, -8, 28, 10, .35, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.fillStyle = active ? '#ff5474' : '#c3a16b'; ctx.beginPath(); ctx.ellipse(0, 5, 9, 24, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.fillStyle = '#e8f5f5'; ctx.beginPath(); ctx.arc(0, -16, 8, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#15252b'; ctx.beginPath(); ctx.arc(-3, -17, 2, 0, Math.PI * 2); ctx.arc(3, -17, 2, 0, Math.PI * 2); ctx.fill(); ctx.restore();
   }
-  let last = performance.now(), sample = 0, lastState = '';
+  let last = performance.now(), sample = 0, lastState = '', stateSince = performance.now();
   function loop(now) {
     const dt = Math.min(.05, (now - last) / 1000); last = now; sample += dt * 1000; const s = state();
     if (engine) {
       game.setSprintActive(engine.isGiantFiberFiring ? engine.isGiantFiberFiring() : engine.state.giantFiberFiring);
       if (engine.setExhausted) engine.setExhausted(game.exhausted);
     }
-    if (sample > 140) { sample = 0; history.push(s); if (history.length > maxHistory) history.shift(); timeline.push(s.behaviorState); if (timeline.length > 72) timeline.shift(); $('timeline-strip').innerHTML = timeline.map(item => `<i data-state="${item}" title="${item}"></i>`).join(''); }
+    if (sample > 140) {
+      sample = 0;
+      history.push(s);
+      if (history.length > maxHistory) history.shift();
+      if (lastState !== s.behaviorState) {
+        if (lastState) timeline.push({ state: lastState, duration: now - stateSince });
+        stateSince = now;
+        lastState = s.behaviorState;
+      } else if (!timeline.length || timeline[timeline.length - 1].state !== s.behaviorState) {
+        timeline.push({ state: s.behaviorState, duration: 0 });
+      } else {
+        timeline[timeline.length - 1].duration = now - stateSince;
+      }
+      while (timeline.reduce((total, item) => total + item.duration, 0) > 12600) timeline.shift();
+      const total = Math.max(1, timeline.reduce((sum, item) => sum + item.duration, 0));
+      $('timeline-strip').innerHTML = timeline.map(item => `<i data-state="${item.state}" style="flex:${Math.max(1, item.duration / total * 100)}" title="${item.state} · ${(item.duration / 1000).toFixed(1)} s"></i>`).join('');
+    }
     $('val-npf').textContent = `${Math.round(s.npfLevel * 100)}%`; $('val-panic').textContent = `${Math.round(s.panicLevel * 100)}%`; $('val-dopamine').textContent = `${Math.round(s.dopamineTransient * 100)}%`; $('val-stamina').textContent = `${Math.round(game.stamina * 100)}%`;
     $('meter-npf').style.width = `${clamp(s.npfLevel) * 100}%`; $('meter-panic').style.width = `${clamp(s.panicLevel) * 100}%`; $('meter-dopamine').style.width = `${clamp(s.dopamineTransient) * 100}%`; $('meter-stamina').style.width = `${clamp(game.stamina) * 100}%`;
-    $('state-ticker').textContent = s.behaviorState; $('state-ticker').style.color = colors[s.behaviorState] || colors.ALERT; $('state-log').textContent = lastState === s.behaviorState ? $('state-log').textContent : `${lastState || 'BOOT'} → ${s.behaviorState}`; lastState = s.behaviorState;
+    $('state-ticker').textContent = s.behaviorState; $('state-ticker').style.color = colors[s.behaviorState] || colors.ALERT; $('state-log').textContent = lastState === s.behaviorState ? $('state-log').textContent : `${lastState || 'BOOT'} → ${s.behaviorState}`;
     $('arousal-pct').textContent = `${Math.round(s.arousalLevel * 100)}%`; $('motor-action').textContent = `ARENA HEADING ${Math.round(s.headingAngle * 180 / Math.PI)}°`; $('gf-status').textContent = `ESCAPE PROXY · ${s.giantFiberFiring ? 'ACTIVE' : 'IDLE'}`; $('disgust-flag').textContent = s.disgusted ? 'AVERSIVE PROXY ACTIVE' : 'AVERSIVE PROXY QUIET'; $('stat-score').textContent = game.score; $('stat-lives').textContent = game.lives;
     if (engine instanceof FullBrainBridge && engine.latest) $('brain-status').textContent = `FLYWIRE • 139,255 neurons • TICK ${engine.latest.tickCount}`;
     drawRadar(s); drawScatter(s); drawAvatar(s); requestAnimationFrame(loop);
