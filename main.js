@@ -15,8 +15,10 @@
   FullBrainBridge.create().then(value => {
     engine = value;
     document.querySelector('.live-dot').textContent = '● FLYWIRE WHOLE-BRAIN';
+    $('brain-status').textContent = 'FLYWIRE • 139,255 neurons • LIVE';
   }).catch(error => {
     console.warn('Pac-Fly: full brain unavailable; using compact circuit.', error);
+    $('brain-status').textContent = 'COMPACT CIRCUIT • FALLBACK';
     return FlyNeuralEngine.create('connectome.json').then(value => { engine = value; });
   }).catch(error => {
     console.error('Pac-Fly: no brain backend loaded.', error);
@@ -91,6 +93,7 @@
     $('meter-npf').style.width = `${clamp(s.npfLevel) * 100}%`; $('meter-panic').style.width = `${clamp(s.panicLevel) * 100}%`; $('meter-dopamine').style.width = `${clamp(s.dopamineTransient) * 100}%`; $('meter-stamina').style.width = `${clamp(game.stamina) * 100}%`;
     $('state-ticker').textContent = s.behaviorState; $('state-ticker').style.color = colors[s.behaviorState] || colors.ALERT; $('state-log').textContent = lastState === s.behaviorState ? $('state-log').textContent : `${lastState || 'BOOT'} → ${s.behaviorState}`; lastState = s.behaviorState;
     $('arousal-pct').textContent = `${Math.round(s.arousalLevel * 100)}%`; $('motor-action').textContent = `HEADING ${Math.round(s.headingAngle * 180 / Math.PI)}°`; $('gf-status').textContent = `GIANT FIBER · ${s.giantFiberFiring ? 'FIRING' : 'IDLE'}`; $('disgust-flag').textContent = s.disgusted ? 'PPL1 AVERSIVE' : 'PPL1 QUIET'; $('stat-score').textContent = game.score; $('stat-lives').textContent = game.lives;
+    if (engine instanceof FullBrainBridge && engine.latest) $('brain-status').textContent = `FLYWIRE • 139,255 neurons • TICK ${engine.latest.tickCount}`;
     drawRadar(s); drawScatter(s); drawAvatar(s); requestAnimationFrame(loop);
   }
   requestAnimationFrame(loop);
