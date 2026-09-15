@@ -156,6 +156,16 @@ body {
   overflow: hidden;
 }
 
+.brain-load-failed .canvas-wrap { border-color: var(--neon-purple); }
+.brain-load-failed .canvas-wrap::after {
+  content: "connectome.json failed to load — the fly has no brain and will not move. Ghosts still run.";
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--neon-purple);
+  padding: 12px;
+  text-align: center;
+}
+
 #arcade-canvas {
   width: 100%;
   height: auto;
@@ -279,6 +289,16 @@ body {
 }
 @keyframes disgust-pulse { from { opacity: 0.55; } to { opacity: 1; } }
 
+.state-log {
+  margin-top: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* ---------------- Oscilloscope-style telemetry graphs ---------------- */
 .telem-graphs { display: flex; flex-direction: column; gap: 10px; }
 .graph-card {
@@ -291,6 +311,10 @@ body {
 .graph-label { font-size: 0.68rem; font-family: var(--font-mono); color: var(--text-secondary); }
 .graph-value { font-size: 0.72rem; font-family: var(--font-mono); color: var(--text-primary); }
 .graph-canvas { width: 100%; height: 44px; display: block; background: var(--bg-inset); border-radius: 4px; }
+
+.graph-split-row { display: flex; align-items: center; gap: 8px; }
+.graph-split-row .graph-canvas { flex: 1; width: auto; }
+#hunger-pie { flex-shrink: 0; display: block; }
 
 .graph-card[data-metric="hunger"] { border-left: 3px solid #ff9a3c; }
 .graph-card[data-metric="panic"] { border-left: 3px solid #ff3355; }

@@ -4,12 +4,13 @@
  *
  * This module is deliberately self-contained: it owns its own canvas,
  * its own requestAnimationFrame loop, and its own input handling. It knows
- * nothing about neurons, neurotransmitters, or Three.js — it only exposes
- * a small set of event callbacks (onDirectionChange, onPelletEaten,
- * onGhostDistanceUpdate, onHazardEaten) so a separate biological model can
- * observe gameplay without this file ever importing it. That separation is
- * what keeps the arcade loop at a steady 60 FPS regardless of how much work
- * the neural/3D side is doing.
+ * nothing about neurons, LIF dynamics, or Three.js — every tick it hands
+ * `callbacks.brainTick(sense)` a small sensory snapshot (bearing/distance
+ * to the nearest sugar and nearest ghost, current heading) and reads back
+ * motor scores {left, right, forward, reverse, rest}, which it turns into
+ * an actual maze move. It never decides direction itself — the connectome
+ * does. That separation is what keeps the arcade loop at a steady 60 FPS
+ * regardless of how much work the neural/3D side is doing.
  */
 
 /** @typedef {{dx:number, dy:number}} Vec2i */
@@ -21,6 +22,16 @@ const DIRS = {
   up: { dx: 0, dy: -1, angle: 1.5 * Math.PI },
 };
 const OPPOSITE = { right: 'left', left: 'right', up: 'down', down: 'up' };
+const DIR_ORDER = ['right', 'down', 'left', 'up']; // clockwise sequence, matches the DIRS angle convention
+const DIR_INDEX = { right: 0, down: 1, left: 2, up: 3 };
+function rotateCW(dir) { return DIR_ORDER[(DIR_INDEX[dir] + 1) % 4]; }
+function rotateCCW(dir) { return DIR_ORDER[(DIR_INDEX[dir] + 3) % 4]; }
+function angleDiff(a, b) {
+  let d = (a - b) % (Math.PI * 2);
+  if (d > Math.PI) d -= Math.PI * 2;
+  if (d < -Math.PI) d += Math.PI * 2;
+  return d;
+}
 
 // The original arcade maze, tile-for-tile. Rows 0-2 and 34-35 are the
 // off-screen buffer the ROM's tile engine reserves; the real 28x31
@@ -73,9 +84,8 @@ class PacmanGame {
   /**
    * @param {HTMLCanvasElement} canvas
    * @param {{
-   *   onDirectionChange?: (angle:number) => void,
+   *   brainTick?: (sense: {sugarBearing:?number, sugarDist:?number, ghostBearing:?number, ghostDist:?number, headingIndex:number}) => ({left:number,right:number,forward:number,reverse:number,rest:boolean}|null),
    *   onPelletEaten?: (isEnergizer:boolean) => void,
-   *   onGhostDistanceUpdate?: (minDistanceTiles:number) => void,
    *   onHazardEaten?: () => void,
    *   onCaught?: () => void,
    * }} callbacks
@@ -99,7 +109,6 @@ class PacmanGame {
     this.sprintActive = false;
     this.stamina = 1.0;
     this.hazardPlacementMode = false;
-    this._lastMinGhostDist = Infinity;
     this.catchFlashUntil = 0;
     this._invulnerableUntil = 0;
     this.exhausted = false;
@@ -157,6 +166,7 @@ class PacmanGame {
       moveT: 0,
       dir: 'left', queuedDir: 'left',
       speed: 7.6, // tiles/sec
+      resting: false,
     };
 
     const ghostDefs = [
@@ -244,8 +254,11 @@ class PacmanGame {
     const frozen = now < this.frozenUntil;
 
     if (!frozen) {
-      this._updatePacAutonomy();
-      this._updateActorMovement(this.pac, dt, this._sprintSpeed(dt), true);
+      this._updatePacBrain(dt);
+      const speed = this._sprintSpeed(dt); // always run: stamina regen/drain and the exhaustion flag apply whether or not the fly is resting
+      if (!this.pac.resting) {
+        this._updateActorMovement(this.pac, dt, speed, true);
+      }
       this._handlePelletsAndHazards(now);
     }
 
@@ -258,10 +271,9 @@ class PacmanGame {
       this._updateActorMovement(g, dt, g.speed, false);
     }
 
-    this._updateGhostDistanceCallback();
     this._checkGhostCollision(now);
 
-    this.mouthPhase += dt * (this.sprintActive ? 14 : this.exhausted ? 4 : 9);
+    this.mouthPhase += dt * (this.pac.resting ? 1.5 : this.sprintActive ? 14 : this.exhausted ? 4 : 9);
   }
 
   _sprintSpeed(dt) {
@@ -310,7 +322,7 @@ class PacmanGame {
 
   _respawnAfterCatch() {
     const pac = this.pac;
-    pac.row = 26; pac.col = 13; pac.moveT = 0; pac.dir = 'left'; pac.queuedDir = 'left';
+    pac.row = 26; pac.col = 13; pac.moveT = 0; pac.dir = 'left'; pac.queuedDir = 'left'; pac.resting = false;
     for (let i = 0; i < this.ghosts.length; i++) {
       const g = this.ghosts[i];
       g.inHouse = true;
@@ -357,11 +369,7 @@ class PacmanGame {
     if (!actor.queuedDir || actor.queuedDir === actor.dir) return;
     const qd = DIRS[actor.queuedDir];
     if (this.isFloor(actor.row + qd.dy, this.wrapCol(actor.row, actor.col + qd.dx), !isPac)) {
-      const prevDir = actor.dir;
       actor.dir = actor.queuedDir;
-      if (isPac && prevDir !== actor.dir) {
-        this.callbacks.onDirectionChange && this.callbacks.onDirectionChange(DIRS[actor.dir].angle);
-      }
     }
   }
 
@@ -376,18 +384,20 @@ class PacmanGame {
   }
 
   /**
-   * Pac-Man has no player input. Every tile-center decision is driven by
-   * the same two biological pressures the neural engine names: predator
-   * avoidance (ghosts, sensed by proximity) and foraging drive (pellets,
-   * treated as sugar). Ghosts are sensed well before they're adjacent —
-   * this is a fly's looming-detector, not eyesight — so fleeing kicks in
-   * early and a direction that would step onto (or swap places with) a
-   * ghost's current tile is never chosen while any other option exists.
-   * Fleeing itself stays noisy — an approximation of the Giant Fiber's
-   * erratic evasive turning; otherwise Pac-Man greedily closes distance
-   * on the nearest pellet, same as the old connectome-driven fly.
+   * Pac-Man has no player input and no distance-scoring heuristic either.
+   * Every decision point, this method (1) works out which directions are
+   * physically safe to consider — walls excluded always, a ghost's own
+   * tile excluded whenever any alternative exists, a known bitter-trap
+   * tile excluded the same way — then (2) hands the brain a sensory
+   * snapshot (bearing + distance to the nearest sugar, bearing + distance
+   * to the nearest sensed ghost, current heading index) and reads back
+   * motor scores for turning left, right, continuing straight, or
+   * reversing. The candidate whose relative direction best matches the
+   * strongest motor score wins. If the brain's `rest` flag comes back
+   * true — low forward drive, low escape drive — Pac-Man simply stops
+   * moving this tick, exactly like a fly resting or grooming.
    */
-  _updatePacAutonomy() {
+  _updatePacBrain(dt) {
     const pac = this.pac;
     const options = [];
     for (const name of Object.keys(DIRS)) {
@@ -398,46 +408,69 @@ class PacmanGame {
     const nonReverse = options.filter(o => o !== OPPOSITE[pac.dir]);
     let candidates = nonReverse.length > 0 ? nonReverse : options;
 
+    // Hard safety rules: never voluntarily step onto a ghost's tile, or a
+    // known bitter trap, while any other candidate direction exists.
+    const ghostTiles = new Set();
+    for (const g of this.ghosts) {
+      if (!g.inHouse) ghostTiles.add(`${Math.round(g.row)},${Math.round(g.col)}`);
+    }
+    const notOntoGhost = candidates.filter((name) => {
+      const d = DIRS[name];
+      const nr = pac.row + d.dy, nc = this.wrapCol(pac.row, pac.col + d.dx);
+      return !ghostTiles.has(`${nr},${nc}`);
+    });
+    if (notOntoGhost.length > 0) candidates = notOntoGhost;
+    const notOntoHazard = candidates.filter((name) => {
+      const d = DIRS[name];
+      const nr = pac.row + d.dy, nc = this.wrapCol(pac.row, pac.col + d.dx);
+      return !this.hazards.has(`${nr},${nc}`);
+    });
+    if (notOntoHazard.length > 0) candidates = notOntoHazard;
+
+    // --- Sense: bearing/distance to nearest sugar and nearest ghost -----
+    const pellet = this._nearestPelletFrom(pac.row, pac.col);
+    let sugarBearing = null, sugarDist = null;
+    if (pellet) {
+      sugarDist = Math.abs(pellet.row - pac.row) + Math.abs(pellet.col - pac.col);
+      const targetAngle = Math.atan2(pellet.row - pac.row, pellet.col - pac.col);
+      sugarBearing = angleDiff(targetAngle, DIRS[pac.dir].angle);
+    }
+
     let nearestGhost = null, nearestGhostDist = Infinity;
     for (const g of this.ghosts) {
       if (g.inHouse) continue;
       const d = Math.hypot(g.row - pac.row, g.col - pac.col);
       if (d < nearestGhostDist) { nearestGhostDist = d; nearestGhost = g; }
     }
-    const fleeing = nearestGhostDist < 7.5; // sensed well before adjacency — a looming detector, not eyesight
-
-    // Hard safety rule: never voluntarily step onto (or swap through) a
-    // ghost's current tile if any other candidate direction exists.
-    const ghostTiles = new Set();
-    for (const g of this.ghosts) {
-      if (!g.inHouse) ghostTiles.add(`${Math.round(g.row)},${Math.round(g.col)}`);
+    let ghostBearing = null, ghostDist = null;
+    if (nearestGhost && nearestGhostDist < 9) {
+      ghostDist = nearestGhostDist;
+      const targetAngle = Math.atan2(nearestGhost.row - pac.row, nearestGhost.col - pac.col);
+      ghostBearing = angleDiff(targetAngle, DIRS[pac.dir].angle);
     }
-    const safeCandidates = candidates.filter((name) => {
-      const d = DIRS[name];
-      const nr = pac.row + d.dy, nc = this.wrapCol(pac.row, pac.col + d.dx);
-      return !ghostTiles.has(`${nr},${nc}`);
-    });
-    if (safeCandidates.length > 0) candidates = safeCandidates;
 
-    const pelletTarget = this._nearestPelletFrom(pac.row, pac.col);
+    const sense = { sugarBearing, sugarDist, ghostBearing, ghostDist, headingIndex: DIR_INDEX[pac.dir] };
+    const motor = this.callbacks.brainTick ? this.callbacks.brainTick(sense, dt) : null;
+    if (!motor) return; // no fixed-timestep brain tick landed this frame — hold the current decision
+
+    // Strict survival override: resting/grooming is never honored with a
+    // predator nearby, whatever the network's momentary motor readout
+    // says. This is a hard rule, not a suggestion.
+    const ghostIsClose = ghostDist != null && ghostDist < 5;
+    this.pac.resting = !!motor.rest && !ghostIsClose;
+    if (this.pac.resting) return;
+
+    const relativeLabel = (name) => {
+      if (name === pac.dir) return 'forward';
+      if (name === rotateCCW(pac.dir)) return 'left';
+      if (name === rotateCW(pac.dir)) return 'right';
+      return 'reverse';
+    };
 
     let best = candidates[0], bestScore = -Infinity;
     for (const name of candidates) {
-      const d = DIRS[name];
-      const nr = pac.row + d.dy, nc = this.wrapCol(pac.row, pac.col + d.dx);
-      let score = 0;
-
-      if (fleeing && nearestGhost) {
-        score += Math.hypot(nr - nearestGhost.row, nc - nearestGhost.col) * 4;
-        score += (Math.random() - 0.5) * 3; // erratic zig-zag to break line of sight
-      } else if (pelletTarget) {
-        score -= Math.hypot(nr - pelletTarget.row, nc - pelletTarget.col);
-      }
-
-      if (this.hazards.has(`${nr},${nc}`)) score -= 8; // avoid known bitter traps
-      if (name === pac.dir) score += 0.3; // mild momentum, avoids twitchy reversals
-      score += Math.random() * (fleeing ? 0.3 : 0.5);
-
+      const label = relativeLabel(name);
+      const score = (motor[label] || 0) + Math.random() * 0.02; // tiny biological noise, not a heuristic
       if (score > bestScore) { bestScore = score; best = name; }
     }
     pac.queuedDir = best;
@@ -495,19 +528,6 @@ class PacmanGame {
       this.score += kind === 'energizer' ? 50 : 10;
       this.callbacks.onPelletEaten && this.callbacks.onPelletEaten(kind === 'energizer');
       if (this.pellets.size === 0) this._buildBoard();
-    }
-  }
-
-  _updateGhostDistanceCallback() {
-    let min = Infinity;
-    for (const g of this.ghosts) {
-      if (g.inHouse) continue;
-      const d = Math.hypot(g.row - this.pac.row, g.col - this.pac.col);
-      if (d < min) min = d;
-    }
-    if (Math.abs(min - this._lastMinGhostDist) > 0.01) {
-      this._lastMinGhostDist = min;
-      this.callbacks.onGhostDistanceUpdate && this.callbacks.onGhostDistanceUpdate(min);
     }
   }
 
@@ -626,13 +646,28 @@ class PacmanGame {
     }
     ctx.fillStyle = stunned ? '#a020f0' : this.exhausted ? '#c9a400' : '#ffff00';
     ctx.shadowColor = stunned ? '#a020f0' : this.exhausted ? '#c9a400' : '#ffff00';
-    ctx.shadowBlur = this.sprintActive ? 14 : 6;
+    ctx.shadowBlur = this.pac.resting ? 3 : this.sprintActive ? 14 : 6;
+    const restMouth = this.pac.resting ? mouth * 0.35 : mouth;
     ctx.beginPath();
-    ctx.arc(0, 0, r, mouth, Math.PI * 2 - mouth);
+    ctx.arc(0, 0, r, restMouth, Math.PI * 2 - restMouth);
     ctx.lineTo(0, 0);
     ctx.closePath();
     ctx.fill();
     ctx.restore();
+
+    // Movement autonomy made visible: the brain's own DNp09/MDN output
+    // came back below the movement threshold, so the fly is genuinely
+    // motionless — resting/grooming, not just waiting on the player.
+    if (this.pac.resting) {
+      const bob = Math.sin(performance.now() / 400) * 2;
+      ctx.save();
+      ctx.font = '10px monospace';
+      ctx.fillStyle = 'rgba(150,220,255,0.85)';
+      ctx.fillText('z', px + r * 0.7, py - r * 1.1 + bob);
+      ctx.font = '7px monospace';
+      ctx.fillText('z', px + r * 1.2, py - r * 0.6 + bob);
+      ctx.restore();
+    }
   }
 
   _drawGhosts() {
