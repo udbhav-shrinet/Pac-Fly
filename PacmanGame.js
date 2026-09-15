@@ -184,12 +184,8 @@ class PacmanGame {
   // -------------------------------------------------------------------
 
   _bindInput() {
-    window.addEventListener('keydown', (e) => {
-      const map = { ArrowRight: 'right', ArrowLeft: 'left', ArrowUp: 'up', ArrowDown: 'down', d: 'right', a: 'left', w: 'up', s: 'down' };
-      const dir = map[e.key];
-      if (dir) { this.pac.queuedDir = dir; e.preventDefault(); }
-    });
-
+    // Pac-Man is not player-controlled — he has his own brain. The only
+    // human input this game accepts is placing bitter traps in the maze.
     this.canvas.addEventListener('click', (evt) => {
       if (!this.hazardPlacementMode) return;
       const rect = this.canvas.getBoundingClientRect();
@@ -244,6 +240,7 @@ class PacmanGame {
     const frozen = now < this.frozenUntil;
 
     if (!frozen) {
+      this._updatePacAutonomy();
       this._updateActorMovement(this.pac, dt, this._sprintSpeed(dt), true);
       this._handlePelletsAndHazards(now);
     }
@@ -312,6 +309,67 @@ class PacmanGame {
         this.callbacks.onDirectionChange && this.callbacks.onDirectionChange(DIRS[actor.dir].angle);
       }
     }
+  }
+
+  _nearestPelletFrom(row, col) {
+    let best = null, bestD = Infinity;
+    for (const key of this.pellets.keys()) {
+      const [r, c] = key.split(',').map(Number);
+      const d = Math.abs(r - row) + Math.abs(c - col);
+      if (d < bestD) { bestD = d; best = { row: r, col: c }; }
+    }
+    return best;
+  }
+
+  /**
+   * Pac-Man has no player input. Every tile-center decision is driven by
+   * the same two biological pressures the neural engine names: predator
+   * avoidance (ghosts, sensed by proximity) and foraging drive (pellets,
+   * treated as sugar). When a ghost is close, fleeing dominates and the
+   * choice gets noisy — an approximation of the Giant Fiber's erratic
+   * evasive turning; otherwise Pac-Man greedily closes distance on the
+   * nearest pellet, same as the old connectome-driven fly.
+   */
+  _updatePacAutonomy() {
+    const pac = this.pac;
+    const options = [];
+    for (const name of Object.keys(DIRS)) {
+      const d = DIRS[name];
+      if (this.isFloor(pac.row + d.dy, this.wrapCol(pac.row, pac.col + d.dx), false)) options.push(name);
+    }
+    if (options.length === 0) return;
+    const nonReverse = options.filter(o => o !== OPPOSITE[pac.dir]);
+    const candidates = nonReverse.length > 0 ? nonReverse : options;
+
+    let nearestGhost = null, nearestGhostDist = Infinity;
+    for (const g of this.ghosts) {
+      if (g.inHouse) continue;
+      const d = Math.hypot(g.row - pac.row, g.col - pac.col);
+      if (d < nearestGhostDist) { nearestGhostDist = d; nearestGhost = g; }
+    }
+    const fleeing = nearestGhostDist < 5.5;
+    const pelletTarget = this._nearestPelletFrom(pac.row, pac.col);
+
+    let best = candidates[0], bestScore = -Infinity;
+    for (const name of candidates) {
+      const d = DIRS[name];
+      const nr = pac.row + d.dy, nc = this.wrapCol(pac.row, pac.col + d.dx);
+      let score = 0;
+
+      if (fleeing && nearestGhost) {
+        score += Math.hypot(nr - nearestGhost.row, nc - nearestGhost.col) * 3;
+        score += (Math.random() - 0.5) * 3; // erratic zig-zag to break line of sight
+      } else if (pelletTarget) {
+        score -= Math.hypot(nr - pelletTarget.row, nc - pelletTarget.col);
+      }
+
+      if (this.hazards.has(`${nr},${nc}`)) score -= 8; // avoid known bitter traps
+      if (name === pac.dir) score += 0.3; // mild momentum, avoids twitchy reversals
+      score += Math.random() * (fleeing ? 0.3 : 0.5);
+
+      if (score > bestScore) { bestScore = score; best = name; }
+    }
+    pac.queuedDir = best;
   }
 
   _updateGhostTarget(g) {
