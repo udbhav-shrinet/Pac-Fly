@@ -70,6 +70,9 @@ The arena now uses an expanded 56x62 logical grid, four times the original
 playable area, with connector openings that add alternate routes. Mobile users
 can switch between Play, Brain, and Signals views, use the on-screen chase
 direction pad, and load Calm, Rush, or Swarm challenge presets.
+Signals also includes a selectable live-history graph for hunger, threat,
+reward, arousal, or stamina, alongside the drive radar, threat/reward bubble,
+and state-duration strip.
 
 An energizer creates an 8-second frightened-ghost interval. Capturing a
 frightened ghost awards 200 points and sends a larger reward event to the

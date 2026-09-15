@@ -117,6 +117,25 @@
     const c = $('scatter-chart'), ctx = c.getContext('2d'), w = c.width, h = c.height; ctx.clearRect(0, 0, w, h); ctx.strokeStyle = 'rgba(128,180,190,.2)'; ctx.beginPath(); ctx.moveTo(28, 10); ctx.lineTo(28, h - 20); ctx.lineTo(w - 8, h - 20); ctx.stroke();
     const x = 28 + clamp(s.panicLevel) * (w - 44), y = h - 20 - clamp(s.dopamineTransient) * (h - 36), radius = 6 + clamp(s.arousalLevel) * 18; ctx.fillStyle = 'rgba(255,84,116,.22)'; ctx.strokeStyle = '#ff5474'; ctx.beginPath(); ctx.arc(x, y, radius, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.fillStyle = '#7d9aa3'; ctx.font = '9px DM Mono'; ctx.fillText('THREAT →', w - 55, h - 5); ctx.save(); ctx.translate(10, 80); ctx.rotate(-Math.PI / 2); ctx.fillText('REWARD', 0, 0); ctx.restore();
   }
+  function drawTrend() {
+    const c = $('trend-chart'), ctx = c.getContext('2d'), w = c.width, h = c.height;
+    const key = $('trend-signal').value;
+    ctx.clearRect(0, 0, w, h);
+    ctx.strokeStyle = 'rgba(128,180,190,.18)';
+    ctx.lineWidth = 1;
+    for (let row = 1; row < 4; row++) { ctx.beginPath(); ctx.moveTo(20, row * h / 4); ctx.lineTo(w - 8, row * h / 4); ctx.stroke(); }
+    if (history.length < 2) return;
+    const points = history.map(item => clamp(key === 'stamina' ? game.stamina : item[key]));
+    ctx.beginPath();
+    points.forEach((value, index) => {
+      const x = 20 + index * (w - 28) / Math.max(1, points.length - 1);
+      const y = h - 10 - value * (h - 20);
+      index ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+    });
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = key === 'panicLevel' ? '#ff5474' : key === 'dopamineTransient' ? '#ffc857' : '#47d8e8';
+    ctx.stroke();
+  }
   function drawAvatar(s) {
     const c = $('fly-avatar'), ctx = c.getContext('2d'), w = c.width, h = c.height, t = performance.now() / 300, active = s.behaviorState === 'ESCAPE' || s.giantFiberFiring, lean = Math.sin(t) * (active ? .2 : .06);
     ctx.clearRect(0, 0, w, h); ctx.save(); ctx.translate(w / 2, h / 2 + 7); ctx.rotate(lean); ctx.fillStyle = 'rgba(90,210,230,.17)'; ctx.strokeStyle = '#74e9ee'; ctx.lineWidth = 1.5;
@@ -131,7 +150,7 @@
     }
     if (sample > 140) {
       sample = 0;
-      history.push(s);
+      history.push({ ...s, stamina: game.stamina });
       if (history.length > maxHistory) history.shift();
       if (lastState !== s.behaviorState) {
         if (lastState) timeline.push({ state: lastState, duration: now - stateSince });
@@ -151,7 +170,7 @@
     $('state-ticker').textContent = s.behaviorState; $('state-ticker').style.color = colors[s.behaviorState] || colors.ALERT; $('state-log').textContent = lastState === s.behaviorState ? $('state-log').textContent : `${lastState || 'BOOT'} → ${s.behaviorState}`;
     $('arousal-pct').textContent = `${Math.round(s.arousalLevel * 100)}%`; $('motor-action').textContent = `ARENA HEADING ${Math.round(s.headingAngle * 180 / Math.PI)}°`; $('gf-status').textContent = `ESCAPE PROXY · ${s.giantFiberFiring ? 'ACTIVE' : 'IDLE'}`; $('disgust-flag').textContent = s.disgusted ? 'AVERSIVE PROXY ACTIVE' : 'AVERSIVE PROXY QUIET'; $('stat-score').textContent = game.score; $('stat-lives').textContent = game.lives;
     if (engine instanceof FullBrainBridge && engine.latest) $('brain-status').textContent = `FLYWIRE • 139,255 neurons • TICK ${engine.latest.tickCount}`;
-    drawRadar(s); drawScatter(s); drawAvatar(s); requestAnimationFrame(loop);
+    drawRadar(s); drawScatter(s); drawTrend(); drawAvatar(s); requestAnimationFrame(loop);
   }
   requestAnimationFrame(loop);
 })();
