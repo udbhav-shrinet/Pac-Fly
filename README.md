@@ -23,10 +23,29 @@ Two things, cleanly separated, bridged by one small file:
 | Pac-Man changes heading | **Ellipsoid Body (E-PG neurons)** | The active phase bump moves to the new angle around the toroidal ring — a literal heading compass |
 | Pellet eaten | **Mushroom Body Kenyon cells / PAM cluster (dopaminergic)** | Calcium-style gold flash, dopamine transient spike, NPF (hunger) drops — energizers hit harder |
 | No food for a while | **Neuropeptide F (NPF)** | Slowly accumulates while wandering — a starvation drive |
-| A ghost closes in | **LC4/LPLC2 looming detectors → Giant Fiber (GF)** | Below a critical tile-radius, GF fires: cyan/white calcium burst, Pac-Man gets an emergency sprint (drains a stamina meter) |
-| A user-placed bitter trap is eaten | **Gr66a gustatory neurons → PPL1 (aversive)** | Purple negative-reinforcement flash, brief stun |
+| A ghost closes in | **LC4/LPLC2 looming detectors → Giant Fiber (GF)** | Instant `panicLevel` spike; below a critical tile-radius GF fires outright: cyan/white calcium burst, Pac-Man gets an emergency sprint (drains a stamina meter) |
+| Sustained/repeated threat | **Octopamine/tyramine stress hormone** | Builds slowly while panic runs hot and lingers long after it fades — a mood, not a startle |
+| Stamina bottoms out | **Post-escape refractory exhaustion** | Pac-Man can't sprint *or* keep pace — he visibly droops into a slow, nodding crawl until stamina recovers |
+| A user-placed bitter trap is eaten | **Gr66a gustatory neurons → PPL1 (aversive)** | Purple negative-reinforcement flash, brief stun, a `disgusted` flag distinct from the stun window |
+| A ghost actually makes contact | **Giant Fiber overdrive** | `panicLevel` maxes out, a life is lost, both Pac-Man and every ghost reset to their spawn tiles with a brief invulnerability window |
 
-None of this is a spiking network simulation — `FlyNeuralEngine` is a small set of decaying/accumulating scalars (`npfLevel`, `dopamineTransient`, `octopamineLevel`, `ppl1Transient`, `giantFiberFiring`, `headingAngle`), typed and documented as a `FlyNeuralState`. It's a *functional* mapping onto real circuit names, not a claim that this is what those 2,000+ real neurons are literally computing.
+None of this is a spiking network simulation — `FlyNeuralEngine` is a small set of decaying/accumulating scalars (`npfLevel`, `dopamineTransient`, `panicLevel`, `octopamineLevel`, `arousalLevel`, `ppl1Transient`, `giantFiberFiring`, `headingAngle`, `behaviorState`), typed and documented as a `FlyNeuralState`. It's a *functional* mapping onto real circuit names, not a claim that this is what those 2,000+ real neurons are literally computing.
+
+## Predator avoidance is real, not decorative
+
+Ghosts are sensed well before they're adjacent — a looming detector, not eyesight — so fleeing kicks in early (within ~7.5 tiles), and a direction that would step onto or swap through a ghost's current tile is a hard exclusion whenever any other option exists, not just a scored penalty. Contact still matters: `PacmanGame` tracks real collision (pixel-distance, not just tile equality) and a catch costs a life, resets both actors to spawn, and fires a `panicLevel` overdrive through the neural engine — Pac-Man can't just wander through the ghosts unscathed.
+
+## Live telemetry
+
+The right-hand panel is a set of scrolling oscilloscope graphs sampled at a fixed cadence (not raw per-frame noise), a circular alertness ring, and a text "drive state" ticker — all reading the same `FlyNeuralState` the 3D viewport reads:
+
+- **Hunger (NPF)** — climbs while foraging without food, blinks red past 85%
+- **Panic (LC4/GF)** — instant spike on looming threat, fast decay
+- **Stress (octopamine)** — the slow-building hormone that lingers after repeated danger
+- **Dopamine (PAM/MBON)** — reward spike on pellet capture
+- **Stamina** — depletes on sprint, recovers slowly, forces the exhaustion slump at zero
+- **Alertness ring** — a smoothed composite of everything above, colored by the current drive state
+- **Drive state ticker** — `ESCAPE`, `DISGUST`, `EXHAUSTED`, `FORAGING`, `GROOMING`, or `ALERT`, in priority order
 
 ## The 3D viewport
 

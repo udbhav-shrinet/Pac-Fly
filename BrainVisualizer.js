@@ -37,7 +37,8 @@ class BrainVisualizer {
     this.renderer.setSize(width, height, false);
     this.renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
 
-    this.scene.add(new THREE.AmbientLight(0x333344, 1.2));
+    this.ambientLight = new THREE.AmbientLight(0x333344, 1.2);
+    this.scene.add(this.ambientLight);
     const key = new THREE.PointLight(0x8888ff, 0.6, 20);
     key.position.set(3, 4, 4);
     this.scene.add(key);
@@ -191,7 +192,7 @@ class BrainVisualizer {
     const targetZ = Math.sin(state.headingAngle) * radius;
     bump.position.x += (targetX - bump.position.x) * Math.min(1, dt * 10);
     bump.position.z += (targetZ - bump.position.z) * Math.min(1, dt * 10);
-    ring.material.emissiveIntensity = 0.12 + state.octopamineLevel * 0.25;
+    ring.material.emissiveIntensity = 0.12 + state.panicLevel * 0.5 + state.octopamineLevel * 0.25;
 
     // Mushroom Body: gold flash on dopamine transient.
     for (const lobe of this.mushroomBody.lobes) {
@@ -209,12 +210,18 @@ class BrainVisualizer {
     }
 
     // Giant Fiber: cyan/white burst on escape reflex firing.
-    const gfIntensity = state.giantFiberFiring ? 2.4 : 0.15 + state.octopamineLevel * 0.4;
+    const gfIntensity = state.giantFiberFiring ? 2.4 : 0.15 + state.panicLevel * 0.6 + state.octopamineLevel * 0.3;
     this.giantFiber.ganglion.material.emissiveIntensity = gfIntensity;
     for (const axon of this.giantFiber.axons) axon.material.emissiveIntensity = gfIntensity;
     const gfColor = state.giantFiberFiring ? 0xffffff : 0x33e0ff;
     this.giantFiber.ganglion.material.emissive.set(gfColor);
     for (const axon of this.giantFiber.axons) axon.material.emissive.set(gfColor);
+
+    // Overall scene brightness breathes with arousal — a hyper-alert brain
+    // reads as a brighter, more "lit up" viewport, a distracted/calm one dims.
+    if (this.ambientLight) {
+      this.ambientLight.intensity = 1.0 + (state.arousalLevel || 0) * 0.9;
+    }
   }
 
   // -------------------------------------------------------------------

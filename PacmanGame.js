@@ -77,6 +77,7 @@ class PacmanGame {
    *   onPelletEaten?: (isEnergizer:boolean) => void,
    *   onGhostDistanceUpdate?: (minDistanceTiles:number) => void,
    *   onHazardEaten?: () => void,
+   *   onCaught?: () => void,
    * }} callbacks
    */
   constructor(canvas, callbacks = {}) {
@@ -99,6 +100,9 @@ class PacmanGame {
     this.stamina = 1.0;
     this.hazardPlacementMode = false;
     this._lastMinGhostDist = Infinity;
+    this.catchFlashUntil = 0;
+    this._invulnerableUntil = 0;
+    this.exhausted = false;
 
     this._buildBoard();
     this._resetActors();
@@ -255,17 +259,67 @@ class PacmanGame {
     }
 
     this._updateGhostDistanceCallback();
+    this._checkGhostCollision(now);
 
-    this.mouthPhase += dt * (this.sprintActive ? 14 : 9);
+    this.mouthPhase += dt * (this.sprintActive ? 14 : this.exhausted ? 4 : 9);
   }
 
   _sprintSpeed(dt) {
+    // Exhaustion slump: once stamina bottoms out, the fly can't sprint AND
+    // can't even keep up a normal pace — it slows to a dozy crawl until it
+    // recovers, exactly like the real post-escape refractory drop.
+    this.exhausted = this.stamina <= 0.05;
+
     if (this.sprintActive && this.stamina > 0.02) {
       this.stamina = Math.max(0, this.stamina - dt * 0.5);
       return this.pac.speed * 1.6;
     }
-    this.stamina = Math.min(1, this.stamina + dt * 0.25);
-    return this.pac.speed;
+    this.stamina = Math.min(1, this.stamina + dt * (this.exhausted ? 0.18 : 0.25));
+    return this.exhausted ? this.pac.speed * 0.45 : this.pac.speed;
+  }
+
+  /**
+   * Ghosts are predators, not scenery — actual contact matters. On catch:
+   * a big fear spike fires, Pac-Man freezes and flashes, and both he and
+   * every ghost reset to their spawn tiles (classic arcade "life lost"
+   * beat) with a brief invulnerability window so they don't immediately
+   * re-collide while still overlapping the spawn point.
+   */
+  _checkGhostCollision(now) {
+    if (now < this._invulnerableUntil || now < this.frozenUntil) return;
+    const pacPx = this._actorPixel(this.pac);
+    for (const g of this.ghosts) {
+      if (g.inHouse) continue;
+      const gPx = this._actorPixel(g);
+      const dist = Math.hypot(pacPx.px - gPx.px, pacPx.py - gPx.py);
+      if (dist < this.tile * 0.6) {
+        this.lives = Math.max(0, this.lives - 1);
+        this.catchFlashUntil = now + 700;
+        this.freezeFor(650);
+        this._invulnerableUntil = now + 2200;
+        this.callbacks.onCaught && this.callbacks.onCaught();
+        this._respawnAfterCatch();
+        if (this.lives === 0) {
+          this.lives = 3;
+          this._buildBoard();
+        }
+        break;
+      }
+    }
+  }
+
+  _respawnAfterCatch() {
+    const pac = this.pac;
+    pac.row = 26; pac.col = 13; pac.moveT = 0; pac.dir = 'left'; pac.queuedDir = 'left';
+    for (let i = 0; i < this.ghosts.length; i++) {
+      const g = this.ghosts[i];
+      g.inHouse = true;
+      g.moveT = 0;
+      g.dir = 'up'; g.queuedDir = 'up';
+      g.leaveAt = performance.now() + 600 + i * 900;
+      const spawn = [{ row: 14, col: 13 }, { row: 17, col: 13 }, { row: 17, col: 14 }, { row: 17, col: 12 }][i];
+      g.row = spawn.row; g.col = spawn.col;
+    }
   }
 
   /**
@@ -325,10 +379,13 @@ class PacmanGame {
    * Pac-Man has no player input. Every tile-center decision is driven by
    * the same two biological pressures the neural engine names: predator
    * avoidance (ghosts, sensed by proximity) and foraging drive (pellets,
-   * treated as sugar). When a ghost is close, fleeing dominates and the
-   * choice gets noisy — an approximation of the Giant Fiber's erratic
-   * evasive turning; otherwise Pac-Man greedily closes distance on the
-   * nearest pellet, same as the old connectome-driven fly.
+   * treated as sugar). Ghosts are sensed well before they're adjacent —
+   * this is a fly's looming-detector, not eyesight — so fleeing kicks in
+   * early and a direction that would step onto (or swap places with) a
+   * ghost's current tile is never chosen while any other option exists.
+   * Fleeing itself stays noisy — an approximation of the Giant Fiber's
+   * erratic evasive turning; otherwise Pac-Man greedily closes distance
+   * on the nearest pellet, same as the old connectome-driven fly.
    */
   _updatePacAutonomy() {
     const pac = this.pac;
@@ -339,7 +396,7 @@ class PacmanGame {
     }
     if (options.length === 0) return;
     const nonReverse = options.filter(o => o !== OPPOSITE[pac.dir]);
-    const candidates = nonReverse.length > 0 ? nonReverse : options;
+    let candidates = nonReverse.length > 0 ? nonReverse : options;
 
     let nearestGhost = null, nearestGhostDist = Infinity;
     for (const g of this.ghosts) {
@@ -347,7 +404,21 @@ class PacmanGame {
       const d = Math.hypot(g.row - pac.row, g.col - pac.col);
       if (d < nearestGhostDist) { nearestGhostDist = d; nearestGhost = g; }
     }
-    const fleeing = nearestGhostDist < 5.5;
+    const fleeing = nearestGhostDist < 7.5; // sensed well before adjacency — a looming detector, not eyesight
+
+    // Hard safety rule: never voluntarily step onto (or swap through) a
+    // ghost's current tile if any other candidate direction exists.
+    const ghostTiles = new Set();
+    for (const g of this.ghosts) {
+      if (!g.inHouse) ghostTiles.add(`${Math.round(g.row)},${Math.round(g.col)}`);
+    }
+    const safeCandidates = candidates.filter((name) => {
+      const d = DIRS[name];
+      const nr = pac.row + d.dy, nc = this.wrapCol(pac.row, pac.col + d.dx);
+      return !ghostTiles.has(`${nr},${nc}`);
+    });
+    if (safeCandidates.length > 0) candidates = safeCandidates;
+
     const pelletTarget = this._nearestPelletFrom(pac.row, pac.col);
 
     let best = candidates[0], bestScore = -Infinity;
@@ -357,7 +428,7 @@ class PacmanGame {
       let score = 0;
 
       if (fleeing && nearestGhost) {
-        score += Math.hypot(nr - nearestGhost.row, nc - nearestGhost.col) * 3;
+        score += Math.hypot(nr - nearestGhost.row, nc - nearestGhost.col) * 4;
         score += (Math.random() - 0.5) * 3; // erratic zig-zag to break line of sight
       } else if (pelletTarget) {
         score -= Math.hypot(nr - pelletTarget.row, nc - pelletTarget.col);
@@ -454,6 +525,13 @@ class PacmanGame {
     this._drawHazards();
     this._drawGhosts();
     this._drawPac();
+
+    const now = performance.now();
+    if (now < this.catchFlashUntil) {
+      const alpha = (this.catchFlashUntil - now) / 700;
+      ctx.fillStyle = `rgba(255,0,60,${0.28 * alpha})`;
+      ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    }
   }
 
   _drawWalls() {
@@ -540,8 +618,14 @@ class PacmanGame {
     ctx.save();
     ctx.translate(px, py);
     ctx.rotate(DIRS[this.pac.dir].angle);
-    ctx.fillStyle = stunned ? '#a020f0' : '#ffff00';
-    ctx.shadowColor = stunned ? '#a020f0' : '#ffff00';
+    if (this.exhausted && !stunned) {
+      // Sleepiness slump: a slow droopy squash-and-nod instead of a crisp circle.
+      const nod = Math.sin(performance.now() / 260) * 0.08;
+      ctx.rotate(nod);
+      ctx.scale(1, 0.82);
+    }
+    ctx.fillStyle = stunned ? '#a020f0' : this.exhausted ? '#c9a400' : '#ffff00';
+    ctx.shadowColor = stunned ? '#a020f0' : this.exhausted ? '#c9a400' : '#ffff00';
     ctx.shadowBlur = this.sprintActive ? 14 : 6;
     ctx.beginPath();
     ctx.arc(0, 0, r, mouth, Math.PI * 2 - mouth);
