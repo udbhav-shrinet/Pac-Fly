@@ -41,15 +41,15 @@
     <aside class="panel telemetry-panel">
       <div class="panel-head"><div><span class="eyebrow">TELEMETRY / 03</span><h2>Behavioral signals</h2></div><span class="panel-note">rolling 90 s</span></div>
       <div class="metric-grid">
-        <div class="metric"><span>HUNGER / NPF</span><b id="val-npf">0%</b><div class="meter"><i id="meter-npf"></i></div></div>
-        <div class="metric"><span>FEAR / GF</span><b id="val-panic">0%</b><div class="meter red"><i id="meter-panic"></i></div></div>
-        <div class="metric"><span>DOPAMINE / PAM</span><b id="val-dopamine">0%</b><div class="meter gold"><i id="meter-dopamine"></i></div></div>
+        <div class="metric"><span>HUNGER PROXY / NPF</span><b id="val-npf">0%</b><div class="meter"><i id="meter-npf"></i></div></div>
+        <div class="metric"><span>THREAT PROXY / LOOMING</span><b id="val-panic">0%</b><div class="meter red"><i id="meter-panic"></i></div></div>
+        <div class="metric"><span>REWARD PROXY / MB-DAN</span><b id="val-dopamine">0%</b><div class="meter gold"><i id="meter-dopamine"></i></div></div>
         <div class="metric"><span>STAMINA</span><b id="val-stamina">100%</b><div class="meter cyan"><i id="meter-stamina"></i></div></div>
       </div>
-      <div class="chart-block"><div class="chart-head"><span>DRIVE BALANCE</span><small>current neural motivation</small></div><canvas id="drive-chart" width="420" height="170"></canvas><div class="chart-legend"><span class="green">● FORAGE</span><span class="red">● ESCAPE</span><span class="cyan">● EXPLORE</span><span class="gold">● REST</span></div></div>
-      <div class="chart-block"><div class="chart-head"><span>FEAR × DOPAMINE</span><small>bubble = arousal</small></div><canvas id="scatter-chart" width="420" height="140"></canvas></div>
-      <div class="chart-block timeline"><div class="chart-head"><span>BEHAVIORAL TIMELINE</span><small>state occupancy</small></div><div id="timeline-strip" class="timeline-strip"></div><div class="timeline-labels"><span>−90 s</span><span>now</span></div></div>
-      <div class="telemetry-footer"><span id="gf-status">GIANT FIBER · IDLE</span><span id="disgust-flag">PPL1 QUIET</span></div>
+      <div class="chart-block"><div class="chart-head"><span>MODEL DRIVE BALANCE</span><small>normalized proxy activity</small></div><canvas id="drive-chart" width="420" height="170"></canvas><div class="chart-legend"><span class="green">● FORAGE</span><span class="red">● THREAT</span><span class="cyan">● EXPLORE</span><span class="gold">● REST</span></div></div>
+      <div class="chart-block"><div class="chart-head"><span>THREAT × REWARD PROXY</span><small>bubble = aggregate arousal proxy</small></div><canvas id="scatter-chart" width="420" height="140"></canvas></div>
+      <div class="chart-block timeline"><div class="chart-head"><span>RECENT STATE SEQUENCE</span><small>one sample / 140 ms</small></div><div id="timeline-strip" class="timeline-strip"></div><div class="timeline-labels"><span>−12.6 s</span><span>now</span></div></div>
+      <div class="telemetry-footer"><span id="gf-status">ESCAPE PROXY · IDLE</span><span id="disgust-flag">AVERSIVE PROXY QUIET</span></div>
     </aside>
   </main>
 

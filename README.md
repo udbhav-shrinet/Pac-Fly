@@ -59,10 +59,12 @@ behavior, and independent fly and ghost speed scaling. A light-mode toggle
 preserves the same hierarchy with clinical high-contrast colors.
 
 Telemetry includes a drive-balance radar, fear-versus-dopamine bubble plot
-(bubble radius is arousal), and a color-coded behavioral state timeline. Hunger
-is driven by the NPF population's continuous metabolic input and is reduced
-only by a sugar-eaten event. The motor readout includes a synchronized canvas
-fly avatar whose posture responds to the live heading and escape state.
+(bubble radius is an aggregate activity proxy), and a color-coded recent-state
+sequence. These are **model readouts**, not measured hormone concentrations or
+behavioral observations from a living fly. The FlyWire graph has no validated
+NPF/GF/neuromodulator calibration in this app, so the UI labels those values as
+proxies. Arena heading is the game heading; it is not an inferred biological
+compass state from the whole-brain graph.
 
 ---
 

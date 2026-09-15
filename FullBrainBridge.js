@@ -12,6 +12,7 @@ class FullBrainBridge {
     this.groupIds = new Map(meta.groups.map(group => [group.name, group.id]));
     this.latest = { firedNeurons: 0, groupSpikeCounts: new Uint16Array(meta.group_count), tickCount: 0 };
     this.activity = new Float32Array(meta.group_count);
+    this.headingAngle = 0;
     this.ready = false;
     this._accum = 0;
     this._workerPromise = new Promise((resolve, reject) => {
@@ -74,6 +75,7 @@ class FullBrainBridge {
 
   update(dt, sense) {
     if (!this.ready) return null;
+    this.headingAngle = sense.headingIndex * Math.PI / 2;
     this._accum += dt;
     if (this._accum >= 0.1) {
       this._accum -= 0.1;
@@ -109,13 +111,20 @@ class FullBrainBridge {
       + this._activity('OLF_ORN_DANGER');
     const dopamine = this._activity('MB_DAN_REW');
     const arousal = Math.min(1, this.activity.reduce((sum, value) => sum + value, 0) / 1600);
+    const drives = {
+      foraging: Math.min(1, (hunger + this._activity('OLF_ORN_FOOD') + this._activity('MB_MBON_APP')) / 12),
+      escape: Math.min(1, fear / 12),
+      explore: Math.min(1, (this._activity('CX_FC') + this._activity('CX_PFN')) / 12),
+      rest: Math.min(1, this._activity('DRIVE_FATIGUE') / 8),
+    };
     return {
-      headingAngle: 0, npfLevel: Math.min(1, hunger / 10),
+      headingAngle: this.headingAngle, npfLevel: Math.min(1, hunger / 10),
       dopamineTransient: Math.min(1, dopamine / 5), panicLevel: Math.min(1, fear / 8),
       octopamineLevel: Math.min(1, fear / 10), arousalLevel: arousal,
       ppl1Transient: Math.min(1, this._activity('MB_DAN_PUN') / 5),
       giantFiberFiring: fear > 0, stunned: false, disgusted: false, exhausted: false,
       behaviorState: fear > 0 ? 'ESCAPE' : hunger > 0 ? 'FORAGING' : 'ALERT',
+      drives,
     };
   }
 
