@@ -15,7 +15,7 @@
     audio.master.connect(audio.context.destination);
     if (audio.context.state === 'suspended') audio.context.resume();
   }
-  function playNote(midi, duration = .55) {
+  function playNote(midi, duration = .55, performer = false) {
     setupAudio();
     const now = audio.context.currentTime;
     const osc = audio.context.createOscillator();
@@ -25,19 +25,28 @@
     envelope.gain.exponentialRampToValueAtTime(.26, now + .025);
     envelope.gain.exponentialRampToValueAtTime(.0001, now + duration);
     osc.connect(envelope).connect(audio.master); osc.start(now); osc.stop(now + duration + .05);
-    $('status-text').textContent = `fly playing key ${((midi - 48) % 24) + 1}`;
+    const keyIndex = Math.max(0, Math.min(23, midi - 48));
+    const key = $('keys').children[keyIndex];
+    document.querySelectorAll('.keys button.active').forEach(item => item.classList.remove('active'));
+    if (key) {
+      key.classList.add('active');
+      window.setTimeout(() => key.classList.remove('active'), duration * 1000);
+    }
+    $('fly').classList.toggle('performing', performer);
+    $('performer-status').textContent = performer ? `FLY PLAYING KEY ${keyIndex + 1}` : 'FLY IS LISTENING';
+    $('status-text').textContent = performer ? `connectome selected key ${keyIndex + 1}` : `preview key ${keyIndex + 1}`;
   }
   function renderTrack() {
     const current = tracks[track];
     $('track-name').innerHTML = `${current.name} <em>— ${current.artist}</em>`;
     $('track-note').textContent = 'Public-domain piano arrangement · ready to play';
   }
-  function stopTrack() { clearInterval(audio.timer); audio.playing = false; $('play-track').textContent = '▶'; }
+  function stopTrack() { clearInterval(audio.timer); audio.playing = false; $('play-track').textContent = '▶'; $('fly').classList.remove('performing'); $('performer-status').textContent = 'FLY IS LISTENING'; }
   function startTrack() {
-    setupAudio(); stopTrack(); audio.playing = true; $('play-track').textContent = 'Ⅱ';
+    setupAudio(); stopTrack(); audio.note = 0; audio.playing = true; $('play-track').textContent = 'Ⅱ';
     audio.timer = setInterval(() => {
       const notes = tracks[track].notes;
-      playNote(notes[audio.note++ % notes.length], .5);
+      playNote(notes[audio.note++ % notes.length], .5, true);
       $('clock').textContent = `${String(Math.floor(audio.note / 2)).padStart(2, '0')}:${String((audio.note * 30) % 60).padStart(2, '0')}`;
     }, 600);
   }
@@ -52,7 +61,7 @@
   });
   [...Array(24)].forEach((_, index) => {
     const key = document.createElement('button'); key.type = 'button'; key.setAttribute('aria-label', `Piano key ${index + 1}`);
-    key.addEventListener('pointerdown', () => playNote(48 + index, .7)); $('keys').appendChild(key);
+    key.addEventListener('pointerdown', () => playNote(48 + index, .7, false)); $('keys').appendChild(key);
   });
   function draw() {
     const time = performance.now() / 1000, wave = $('wave'), wctx = wave.getContext('2d'), neural = $('neural'), nctx = neural.getContext('2d');
