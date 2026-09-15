@@ -3,184 +3,109 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Pac-Fly — The Minimal Viable Connectome</title>
-<meta name="description" content="A multi-agent research sandbox where populations of pruned FlyWire fruit-fly connectomes forage, flee, and evolve in the browser.">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🪰</text></svg>">
+<title>Pac-Fly — Arcade Connectome</title>
+<meta name="description" content="A pixel-accurate 1980 arcade Pac-Man engine wired to a real-time 3D Drosophila connectome visualizer.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🟡</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<a class="skip-link" href="#arena-canvas">Skip to arena</a>
+<a class="skip-link" href="#arcade-canvas">Skip to arcade</a>
 
 <header class="app-header">
   <div class="brand">
-    <span class="brand-glyph" aria-hidden="true">🪰</span>
+    <span class="brand-glyph" aria-hidden="true">🟡</span>
     <div class="brand-text">
       <h1>PAC-FLY</h1>
-      <p class="brand-sub">Computational Biology Sandbox</p>
+      <p class="brand-sub">Arcade Engine × Drosophila Connectome</p>
     </div>
   </div>
   <div class="header-stats" role="status" aria-live="polite">
-    <div class="stat"><span class="stat-label">Population</span><span class="stat-value" id="stat-population">0</span></div>
-    <div class="stat"><span class="stat-label">Avg Energy</span><span class="stat-value" id="stat-energy">0%</span></div>
-    <div class="stat"><span class="stat-label">Sim Time</span><span class="stat-value" id="stat-time">0s</span></div>
-    <div class="stat"><span class="stat-label">Status</span><span class="stat-value stat-alive" id="stat-status">RUNNING</span></div>
+    <div class="stat"><span class="stat-label">Score</span><span class="stat-value" id="stat-score">0</span></div>
+    <div class="stat"><span class="stat-label">Heading</span><span class="stat-value" id="stat-heading">0°</span></div>
   </div>
 </header>
 
 <main class="lab-grid">
 
-  <aside class="control-col" aria-label="God controls">
-    <section class="ctrl-block">
-      <h2>Population</h2>
-      <div class="ctrl-row-2">
-        <button id="btn-spawn-fly" class="lab-btn lab-btn-sugar" type="button">+ Spawn Fly</button>
-        <button id="btn-cull-fly" class="lab-btn lab-btn-danger" type="button">− Cull Fly</button>
-      </div>
-      <label class="field-label" for="global-selection">Injection Target</label>
-      <select id="global-selection" class="lab-select">
-        <option value="all">All Flies</option>
-        <option value="selected">Selected Fly</option>
-      </select>
-    </section>
-
-    <section class="ctrl-block">
-      <h2>Neuromodulators</h2>
-      <button id="btn-adrenaline" class="lab-btn lab-btn-full lab-btn-danger" type="button">⚡ Inject Adrenaline</button>
-      <button id="btn-fasting" class="lab-btn lab-btn-full" type="button">🩸 Inject Fasting Hormone</button>
-      <button id="btn-dopamine" class="lab-btn lab-btn-full lab-btn-sugar" type="button">💠 Trigger Dopamine Spike</button>
-    </section>
-
-    <section class="ctrl-block">
-      <h2>Sensory Mutation</h2>
-      <div class="radio-group" id="sensory-mode-group">
-        <label class="radio-opt">
-          <input type="radio" name="sensory-mode" value="A" checked>
-          <span><strong>Mode A</strong> — Biological Standard<br><small>Ghost → LC4 · Sugar → AL</small></span>
-        </label>
-        <label class="radio-opt">
-          <input type="radio" name="sensory-mode" value="B">
-          <span><strong>Mode B</strong> — Apex Predator<br><small>Ghost inverted → AL (chases ghosts)</small></span>
-        </label>
-        <label class="radio-opt">
-          <input type="radio" name="sensory-mode" value="C">
-          <span><strong>Mode C</strong> — Optic Flow Stealth<br><small>Behind ghost → AL · Seen → LC4</small></span>
-        </label>
-      </div>
-    </section>
-
-    <section class="ctrl-block">
-      <h2>Environment</h2>
-      <div class="ctrl-row-2">
-        <button id="btn-add-ghost" class="lab-btn lab-btn-danger" type="button">+ Add Ghost</button>
-        <button id="btn-remove-ghost" class="lab-btn" type="button">− Remove Ghosts</button>
-      </div>
-      <div class="ctrl-row-2">
-        <button id="btn-add-sugar" class="lab-btn lab-btn-sugar" type="button">+ Drop Sugar</button>
-        <button id="btn-clear-sugar" class="lab-btn" type="button">− Clear Sugar</button>
-      </div>
-      <label class="check-opt">
-        <input type="checkbox" id="toggle-heatmap">
-        <span>Pheromone Heatmap Overlay</span>
-      </label>
-    </section>
-
-    <section class="ctrl-block">
-      <h2>Data</h2>
-      <button id="btn-export-csv" class="lab-btn lab-btn-full" type="button">⤓ Export Selected Fly CSV</button>
-      <div class="roster-readout">Fit Roster: <span id="roster-count">0</span> genomes</div>
-    </section>
-  </aside>
-
-  <section class="center-col">
+  <section class="arcade-panel" aria-label="Arcade">
     <div class="panel-heading">
-      <h2>Arena</h2>
-      <span class="panel-tag" id="selected-fly-tag">no fly selected — click one</span>
+      <h2>Arcade</h2>
+      <span class="panel-tag">arrow keys / WASD to move</span>
     </div>
     <div class="canvas-wrap">
-      <canvas id="arena-canvas" width="820" height="600" role="img" aria-label="Petri-dish arena, rendered live"></canvas>
-      <canvas id="heatmap-canvas" width="820" height="600" aria-hidden="true"></canvas>
-      <div class="panic-flash" id="panic-flash" aria-hidden="true"></div>
+      <canvas id="arcade-canvas" role="img" aria-label="Classic Pac-Man arcade maze, rendered live"></canvas>
     </div>
-
-    <div class="panel-heading">
-      <h2>Population Analytics</h2>
-      <span class="panel-tag">swarm-level</span>
-    </div>
-    <div class="analytics-grid">
-      <article class="analytics-card">
-        <h3>Energy Histogram</h3>
-        <canvas id="chart-histogram" width="240" height="90"></canvas>
-      </article>
-      <article class="analytics-card">
-        <h3>Survival Curve</h3>
-        <canvas id="chart-survival" width="240" height="90"></canvas>
-      </article>
-      <article class="analytics-card">
-        <h3>Spatial Density</h3>
-        <canvas id="chart-density" width="240" height="90"></canvas>
-      </article>
-    </div>
+    <button id="btn-hazard-mode" class="lab-btn lab-btn-full" type="button">+ Place Bitter Trap</button>
+    <p class="hint">Bitter traps spike the PPL1 aversive circuit and briefly stun Pac-Man on contact (Gr66a gustatory reflex).</p>
   </section>
 
-  <aside class="telemetry-panel" aria-label="Neural telemetry">
+  <aside class="brain-panel" aria-label="3D connectome visualizer">
     <div class="panel-heading">
-      <h2>Neural Telemetry</h2>
-      <span class="panel-tag">selected fly</span>
+      <h2>Live Connectome</h2>
+      <span class="panel-tag">drag to orbit</span>
+    </div>
+    <div class="brain-canvas-wrap">
+      <canvas id="brain-canvas"></canvas>
     </div>
 
-    <div class="telem-osc-grid">
-      <article class="telem-card">
-        <header><h3>AL</h3><span class="telem-sub">Antennal Lobe · Olfactory</span></header>
-        <canvas class="telem-canvas" id="chart-al" width="300" height="46"></canvas>
-      </article>
-      <article class="telem-card">
-        <header><h3>LC4</h3><span class="telem-sub">Lobula Plate · Threat</span></header>
-        <canvas class="telem-canvas" id="chart-lc4" width="300" height="46"></canvas>
-      </article>
-      <article class="telem-card">
-        <header><h3>MB</h3><span class="telem-sub">Mushroom Body · Reward</span></header>
-        <canvas class="telem-canvas" id="chart-mb" width="300" height="46"></canvas>
-      </article>
-      <article class="telem-card">
-        <header><h3>DN</h3><span class="telem-sub">Descending · Motor</span></header>
-        <canvas class="telem-canvas" id="chart-dn" width="300" height="46"></canvas>
-      </article>
+    <div class="meter-block">
+      <div class="meter-row">
+        <span class="meter-label meter-npf">NPF · Hunger</span>
+        <div class="meter-track"><div class="meter-fill fill-npf" id="meter-npf"></div></div>
+      </div>
+      <div class="meter-row">
+        <span class="meter-label meter-dopamine">PAM/MBON · Dopamine</span>
+        <div class="meter-track"><div class="meter-fill fill-dopamine" id="meter-dopamine"></div></div>
+      </div>
+      <div class="meter-row">
+        <span class="meter-label meter-octopamine">Octopamine · Stress</span>
+        <div class="meter-track"><div class="meter-fill fill-octopamine" id="meter-octopamine"></div></div>
+      </div>
+      <div class="meter-row">
+        <span class="meter-label meter-ppl1">PPL1 · Aversive</span>
+        <div class="meter-track"><div class="meter-fill fill-ppl1" id="meter-ppl1"></div></div>
+      </div>
+      <div class="meter-row">
+        <span class="meter-label meter-stamina">Sprint Stamina</span>
+        <div class="meter-track"><div class="meter-fill fill-stamina" id="meter-stamina"></div></div>
+      </div>
     </div>
 
-    <div class="telem-block">
-      <h3 class="telem-block-title">Spike Raster · last 5s</h3>
-      <canvas id="raster-canvas" width="300" height="150"></canvas>
+    <div class="gf-block">
+      <span class="gf-label">Giant Fiber Escape</span>
+      <span class="gf-status" id="gf-status">idle</span>
     </div>
 
-    <div class="telem-block">
-      <h3 class="telem-block-title">Live Connectome</h3>
-      <canvas id="connectome-canvas" width="300" height="170"></canvas>
+    <div class="circuit-legend">
+      <div><span class="dot" style="background:#33e0ff"></span> Ellipsoid Body / Giant Fiber</div>
+      <div><span class="dot" style="background:#ffb800"></span> Mushroom Body / PAM</div>
+      <div><span class="dot" style="background:#a020f0"></span> PPL1 aversive</div>
     </div>
   </aside>
 
 </main>
 
-<footer class="event-log-panel" aria-label="Event log">
-  <div class="event-log-heading">EVENT LOG</div>
-  <div class="event-log-scroll" id="event-log"></div>
+<footer class="app-footer">
+  <span>Pruned functional mapping — not a literal FlyWire graph. See README.</span>
 </footer>
 
-<div class="modal-overlay" id="modal-overlay" hidden>
-  <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="modal-title">
-    <div class="modal-scan"></div>
-    <h2 id="modal-title">SWARM EXTINCT</h2>
-    <p class="modal-sub">POPULATION 0</p>
-    <p class="modal-detail" id="modal-detail">Every fly has died.</p>
-    <button id="btn-reboot" class="lab-btn lab-btn-danger modal-reboot" type="button">REBOOT CONNECTOME</button>
-  </div>
-</div>
+<!-- Three.js r128 (classic global build) + example passes/controls, pinned. -->
+<script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/postprocessing/MaskPass.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
 
-<script src="connectome.js"></script>
-<script src="environment.js"></script>
-<script src="flyAgent.js"></script>
-<script src="simulation.js"></script>
+<script src="PacmanGame.js"></script>
+<script src="FlyNeuralEngine.js"></script>
+<script src="BrainVisualizer.js"></script>
+<script src="main.js"></script>
 </body>
 </html>
