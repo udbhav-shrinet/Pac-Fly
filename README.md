@@ -82,6 +82,20 @@ four-way compass cue. These are game-environment models mapped into neural
 populations; the app does not claim literal camera vision, microphone hearing,
 or validated sensory physiology.
 
+### 3D vision and reinforcement
+
+The arena now has a synchronized Three.js presentation layer with a behind-fly
+follow camera. A seven-ray compound-eye cone samples the authoritative maze
+walls every frame; normalized distance and looming are injected into the visual
+bridge. The 2D game remains the collision authority so the visual layer cannot
+create a second, divergent physics simulation.
+
+Both the 139k-neuron Worker and the compact fallback expose a bounded,
+reward-modulated plasticity path. Pellet and energizer events reinforce recent
+activity, while traps and capture apply punishment. This is computational
+STDP/eligibility learning, not a claim of biologically validated synaptic
+learning or a literal recording of a living fly.
+
 Telemetry uses smoothed proxy levels rather than raw spike counts, and the
 motor card reports the action selected for the current maze decision
 (FORWARD, LEFT, RIGHT, ESCAPE / REVERSE, or RESTING). Equal left/right activity

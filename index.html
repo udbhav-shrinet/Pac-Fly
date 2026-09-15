@@ -26,7 +26,7 @@
   <main class="dashboard">
     <section class="panel experiment-panel view-arena">
       <div class="panel-head"><div><span class="eyebrow">PLAYGROUND / 01</span><h2>Closed-loop arena</h2></div><span class="live-dot">● AUTONOMOUS</span></div>
-      <div class="arena-shell"><canvas id="arcade-canvas" role="img" aria-label="Connectome-controlled maze"></canvas><div class="arena-overlay"><span>56 × 62 GRID</span><span id="arena-mode">PREDATOR FIELD</span></div><div class="touch-hint">Tap GOD MODE to intervene</div></div>
+      <div class="arena-shell"><canvas id="arcade-canvas" role="img" aria-label="Connectome-controlled maze"></canvas><canvas id="arena-3d" aria-label="3D fly arena"></canvas><div class="arena-overlay"><span>56 × 62 GRID · 3D</span><span id="arena-mode">PREDATOR FIELD</span></div><div class="touch-hint">Tap GOD MODE to intervene</div></div>
       <div class="score-row"><span><b id="stat-score">0</b><small>SCORE</small></span><span><b id="stat-lives">3</b><small>LIVES</small></span><span><b id="ghost-reward-inline">0</b><small>GHOSTS</small></span><button id="pause-game" class="tool-btn" type="button">Pause</button><button id="reset-game" class="tool-btn" type="button">Reset</button><button id="human-toggle" class="primary-btn" type="button">Enter chase mode</button></div>
       <div class="god-mode">
         <div class="control-title"><span>GOD MODE</span><small id="tool-status">Select a tool, then tap the arena</small></div>
@@ -48,6 +48,8 @@
     <aside class="panel telemetry-panel view-data">
       <div class="panel-head"><div><span class="eyebrow">SIGNALS / 03</span><h2>Behavioral telemetry</h2></div><span class="panel-note">MODEL PROXIES</span></div>
       <div class="metric-grid"><div class="metric"><span>HUNGER / NPF</span><b id="val-npf">0%</b><div class="meter"><i id="meter-npf"></i></div></div><div class="metric"><span>THREAT / LOOMING</span><b id="val-panic">0%</b><div class="meter red"><i id="meter-panic"></i></div></div><div class="metric"><span>REWARD / MB-DAN</span><b id="val-dopamine">0%</b><div class="meter gold"><i id="meter-dopamine"></i></div></div><div class="metric"><span>STAMINA</span><b id="val-stamina">100%</b><div class="meter cyan"><i id="meter-stamina"></i></div></div></div>
+      <div class="sensory-panel"><span class="chart-label">SENSORY INPUT</span><label>THREAT <i id="bar-threat"></i></label><label>FOOD DRIVE <i id="bar-food"></i></label><label>RAYCAST LOOM <i id="bar-ray"></i></label></div>
+      <div class="motor-panel"><span class="chart-label">MOTOR INTENT</span><div class="motor-dpad"><b id="motor-up">▲</b><div><b id="motor-left">◀</b><b id="motor-rest">●</b><b id="motor-right">▶</b></div><b id="motor-down">▼</b></div></div>
       <div class="chart-block"><div class="chart-head"><span>DRIVE COMPASS</span><small>current modeled balance</small></div><canvas id="drive-chart" width="420" height="170"></canvas><div class="chart-legend"><span class="green">● FORAGE</span><span class="red">● THREAT</span><span class="cyan">● EXPLORE</span><span class="gold">● REST</span></div></div>
       <div class="chart-block"><div class="chart-head"><span>REWARD TRAJECTORY</span><small>history + current threat</small></div><canvas id="scatter-chart" width="420" height="140"></canvas></div>
       <div class="chart-block"><div class="chart-head"><span>LIVE SIGNAL HISTORY</span><select id="trend-signal" aria-label="Choose signal history"><option value="npfLevel">Hunger / NPF</option><option value="panicLevel">Threat / Looming</option><option value="dopamineTransient">Reward / MB-DAN</option><option value="arousalLevel">Arousal</option><option value="stamina">Stamina</option></select></div><canvas id="trend-chart" width="420" height="120"></canvas></div>
@@ -58,6 +60,6 @@
 
   <footer><span>FLYWIRE-DERIVED STRUCTURE · MODELED DYNAMICS</span><a href="README.md">METHODS ↗</a></footer>
   <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script><script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script><script src="https://unpkg.com/three@0.128.0/examples/js/shaders/CopyShader.js"></script><script src="https://unpkg.com/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script><script src="https://unpkg.com/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script><script src="https://unpkg.com/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script><script src="https://unpkg.com/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script><script src="https://unpkg.com/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
-  <script src="PacmanGame.js"></script><script src="Connectome.js"></script><script src="FlyNeuralEngine.js"></script><script src="FullBrainBridge.js"></script><script src="BrainVisualizer.js"></script><script src="main.js"></script>
+  <script src="PacmanGame.js"></script><script src="Connectome.js"></script><script src="FlyNeuralEngine.js"></script><script src="FullBrainBridge.js"></script><script src="BrainVisualizer.js"></script><script src="ThreeArenaView.js"></script><script src="main.js"></script>
 </body>
 </html>

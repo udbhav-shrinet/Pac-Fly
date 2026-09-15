@@ -86,11 +86,12 @@ class FullBrainBridge {
       const sugar = sense.foodOdor ?? (sense.sugarDist == null ? 0 : Math.max(0, 1 - sense.sugarDist / 12));
       const threat = sense.dangerOdor ?? (sense.ghostDist == null ? 0 : Math.max(0, 1 - sense.ghostDist / 9));
       const visualThreat = (sense.threatVisible ?? 0) * threat;
+      const rayThreat = sense.raycastLooming ?? 0;
       const vibration = sense.vibration ?? 0;
       const contact = sense.contact ?? 0;
       this._stimulate(
         ['OLF_ORN_FOOD', 'OLF_ORN_DANGER', 'VIS_LC', 'MECH_CHORD', 'MECH_BRISTLE', 'ANTENNAL_MECH', 'DRIVE_HUNGER'],
-        [sugar * 1.5, threat * 1.8, visualThreat * 1.4, vibration * 0.8, contact * 1.8, (sense.proprioception?.turning ? 0.4 : 0.12), 0.18]
+        [sugar * 1.5, threat * 1.8, Math.max(visualThreat, rayThreat) * 1.4, vibration * 0.8, contact * 1.8, (sense.proprioception?.turning ? 0.4 : 0.12), 0.18]
       );
       this._stimulate(['THERMO_WARM', 'THERMO_COOL', 'NOCI'], [
         Math.max(0, sense.temperature - 0.5) * 0.8,
@@ -162,12 +163,14 @@ class FullBrainBridge {
     };
   }
 
+  _reward(value) { this.worker.postMessage({ type: 'reward', value }); }
   onPelletEaten(isEnergizer) {
+    this._reward(isEnergizer ? 1 : 0.35);
     this._stimulate(['GUS_GRN_SWEET', 'MB_DAN_REW'], [isEnergizer ? 1.4 : 0.35, isEnergizer ? 1.2 : 0.25]);
   }
 
-  onHazardEaten() { this._stimulate(['GUS_GRN_BITTER', 'MB_DAN_PUN'], [1.4, 1]); }
-  onGhostCaught() { this._stimulate(['MB_DAN_REW', 'MB_MBON_APP'], [2.4, 1.5]); }
-  onCaught() { this._stimulate(['MECH_BRISTLE', 'DRIVE_FEAR', 'DN_STARTLE'], [1, 1, 1]); }
+  onHazardEaten() { this._reward(-0.8); this._stimulate(['GUS_GRN_BITTER', 'MB_DAN_PUN'], [1.4, 1]); }
+  onGhostCaught() { this._reward(1); this._stimulate(['MB_DAN_REW', 'MB_MBON_APP'], [2.4, 1.5]); }
+  onCaught() { this._reward(-1); this._stimulate(['MECH_BRISTLE', 'DRIVE_FEAR', 'DN_STARTLE'], [1, 1, 1]); }
   isGiantFiberFiring() { return this.state.giantFiberFiring; }
 }

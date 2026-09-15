@@ -1,11 +1,15 @@
 /* Pac-Fly V2: wiring, researcher controls, and lightweight canvas telemetry. */
 (() => {
   let engine = null;
+  let arena3d = null;
   const fallback = { headingAngle: 0, npfLevel: .2, dopamineTransient: 0, panicLevel: 0, octopamineLevel: 0, arousalLevel: .1, ppl1Transient: 0, giantFiberFiring: false, disgusted: false, exhausted: false, behaviorState: 'GROOMING', drives: { foraging: .2, escape: 0, explore: .35, rest: .8 } };
   const state = () => engine ? engine.state : fallback;
   let ghostRewards = 0;
   const game = new PacmanGame(document.getElementById('arcade-canvas'), {
-    brainTick: (sense, dt) => engine ? engine.update(dt, sense) : null,
+    brainTick: (sense, dt) => {
+      const enriched = arena3d ? { ...sense, ...arena3d.sense() } : sense;
+      return engine ? engine.update(dt, enriched) : null;
+    },
     onPelletEaten: kind => engine && engine.onPelletEaten && engine.onPelletEaten(kind),
     onHazardEaten: () => engine && engine.onHazardEaten && engine.onHazardEaten(),
     onGhostCaught: () => {
@@ -16,6 +20,10 @@
     },
     onCaught: () => engine && engine.onCaught && engine.onCaught(),
   });
+  if (typeof THREE !== 'undefined') {
+    try { arena3d = new ThreeArenaView(document.getElementById('arena-3d'), game); }
+    catch (error) { console.warn('Pac-Fly: 3D arena unavailable; using hidden 2D authority.', error); }
+  }
   game.start();
   // Prefer the versioned 139,255-neuron FlyWire-derived binary. The compact
   // 66-neuron circuit remains a deterministic offline fallback.
@@ -197,6 +205,13 @@
     $('meter-npf').style.width = `${clamp(s.npfLevel) * 100}%`; $('meter-panic').style.width = `${clamp(s.panicLevel) * 100}%`; $('meter-dopamine').style.width = `${clamp(s.dopamineTransient) * 100}%`; $('meter-stamina').style.width = `${clamp(game.stamina) * 100}%`;
     $('state-ticker').textContent = s.behaviorState; $('state-ticker').style.color = colors[s.behaviorState] || colors.ALERT; $('state-log').textContent = lastState === s.behaviorState ? $('state-log').textContent : `${lastState || 'BOOT'} → ${s.behaviorState}`;
     const senses = engine && engine.latestSenses ? engine.latestSenses : {};
+    $('bar-threat').style.width = `${Math.round((senses.dangerOdor || 0) * 100)}%`;
+    $('bar-food').style.width = `${Math.round((senses.foodOdor || 0) * 100)}%`;
+    $('bar-ray').style.width = `${Math.round((senses.raycastLooming || 0) * 100)}%`;
+    const motor = engine && engine.lastMotor ? engine.lastMotor : {};
+    ['up', 'left', 'rest', 'right', 'down'].forEach(key => { const node = $(`motor-${key}`); if (node) node.classList.remove('active'); });
+    const motorKey = game.motorAction.includes('REST') ? 'rest' : game.motorAction.includes('REVERSE') ? 'down' : game.pac.dir === 'up' ? 'up' : game.pac.dir === 'down' ? 'down' : game.pac.dir === 'left' ? 'left' : 'right';
+    $(`motor-${motorKey}`).classList.add('active');
     $('sense-vision').textContent = `VISION ${Math.round(Math.max(senses.foodVisible || 0, senses.threatVisible || 0) * 100)}%`;
     $('sense-odor').textContent = `ODOR ${Math.round(Math.max(senses.foodOdor || 0, senses.dangerOdor || 0) * 100)}%`;
     $('sense-vibration').textContent = `VIBRATION ${Math.round((senses.vibration || 0) * 100)}%`;

@@ -45,6 +45,9 @@ class Connectome {
     this.v = new Float32Array(n);
     this.refractory = new Int16Array(n);
     this.spiked = new Uint8Array(n);
+    this.preTrace = new Float32Array(n);
+    this.postTrace = new Float32Array(n);
+    this.rewardSignal = 0;
     this.externalCurrent = new Float32Array(n);
     this.pendingCurrent = new Float32Array(n); // synaptic input queued for next step
 
@@ -105,9 +108,28 @@ class Connectome {
     this.externalCurrent[i] += current;
   }
 
+  setReward(value) { this.rewardSignal = Math.max(-1, Math.min(1, value)); }
+
+  applyPlasticity() {
+    if (!this.rewardSignal) return;
+    for (let pre = 0; pre < this.n; pre++) {
+      for (const edge of this._outgoing[pre]) {
+        const [post] = edge;
+        edge[1] = Math.max(-2, Math.min(2, edge[1] + this.rewardSignal * 0.0008 * (this.preTrace[pre] * this.postTrace[post] - 0.4 * this.preTrace[post] * this.postTrace[pre])));
+      }
+    }
+    this.rewardSignal *= 0.82;
+  }
+
   /** One LIF simulation tick: leak + integrate, threshold, propagate, refractory. */
   step() {
     const { n, v, tau, threshold, refractory, refractoryLimit, spiked, externalCurrent, pendingCurrent } = this;
+    for (let i = 0; i < n; i++) {
+      this.preTrace[i] *= 0.92;
+      this.postTrace[i] *= 0.92;
+      if (spiked[i]) this.preTrace[i] = this.postTrace[i] = 1;
+    }
+    this.applyPlasticity();
 
     for (let i = 0; i < n; i++) {
       if (refractory[i] > 0) {

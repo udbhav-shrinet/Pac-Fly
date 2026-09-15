@@ -55,6 +55,10 @@ var tickTimeSamples = 0;
 var activeNeuronCount = 0;
 var cumulativeFiredCount = 0;
 var groupStimuli = null;
+var rewardSignal = 0;
+var plasticityRate = 0.00008;
+var preTrace = null;
+var postTrace = null;
 
 /* neuropil-gated simulation structures (built by buildGroupStructures) */
 var numGroups = 0;
@@ -148,6 +152,8 @@ function parseBinary(buffer) {
 	V = new Float32Array(N);
 	fired = new Uint8Array(N);
 	refractory = new Uint8Array(N);
+	preTrace = new Float32Array(N);
+	postTrace = new Float32Array(N);
 	tickCount = 0;
 }
 
@@ -305,15 +311,26 @@ function tick() {
 	}
 
 	/* step 2 -- propagate from fired neurons in active groups */
+	for (var i = 0; i < N; i++) {
+		preTrace[i] *= 0.92;
+		postTrace[i] *= 0.92;
+		if (fired[i]) { preTrace[i] = 1; postTrace[i] = 1; }
+	}
 	for (var g = 0; g < numGroups; g++) {
 		if (!groupActive[g]) continue;
 		for (var i = groupOffset[g]; i < groupOffset[g + 1]; i++) {
 			if (fired[i] === 0) continue;
 			for (var j = rowPtr[i]; j < rowPtr[i + 1]; j++) {
 				var target = colIdx[j];
+				if (rewardSignal !== 0) {
+					values[j] += rewardSignal * plasticityRate * (preTrace[i] * postTrace[target] - 0.4 * preTrace[target] * postTrace[i]);
+					if (values[j] > WEIGHT_SCALE) values[j] = WEIGHT_SCALE;
+					if (values[j] < -WEIGHT_SCALE) values[j] = -WEIGHT_SCALE;
+				}
 				V[target] += values[j];
 				groupRecvInput[groupId[target]] = 1;
 			}
+			rewardSignal *= 0.82;
 		}
 	}
 
@@ -479,6 +496,10 @@ self.onmessage = function (e) {
 		}
 		break;
 
+	case 'reward':
+		rewardSignal = Math.max(-1, Math.min(1, e.data.value || 0));
+		break;
+
 	case 'setStimulusState':
 		sustainedIndices = e.data.indices;
 		sustainedIntensities = e.data.intensities;
@@ -499,6 +520,9 @@ self.onmessage = function (e) {
 			groupStimulatedThisTick.fill(0);
 		}
 		if (groupStimuli) groupStimuli.fill(0);
+		if (preTrace) preTrace.fill(0);
+		if (postTrace) postTrace.fill(0);
+		rewardSignal = 0;
 		tickTimeSum = 0;
 		tickTimeSamples = 0;
 		cumulativeFiredCount = 0;

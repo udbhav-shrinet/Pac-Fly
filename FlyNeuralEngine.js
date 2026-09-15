@@ -209,6 +209,7 @@ class FlyNeuralEngine {
 
   /** PAM cluster dopaminergic reward pulse on pellet capture. */
   onPelletEaten(isEnergizer) {
+    this.connectome.setReward(isEnergizer ? 1 : 0.35);
     this.connectome.injectPopulation('PAM_DAN', isEnergizer ? 2.2 : 1.1);
     // Sugar is the only satiation event. The constant NPF drive in _tick()
     // continues to deplete hunger between meals.
@@ -217,12 +218,14 @@ class FlyNeuralEngine {
 
   /** PPL1 aversive pulse + physical stun window on bitter-trap contact. */
   onHazardEaten() {
+    this.connectome.setReward(-0.8);
     this.connectome.injectPopulation('PPL1_DAN', 2.4);
     this._stunnedUntil = performance.now() + 900;
   }
 
   /** A ghost made contact — drive the Giant Fiber straight past threshold. */
   onCaught() {
+    this.connectome.setReward(-1);
     this.connectome.injectPopulation('GF', 3.0);
   }
 
