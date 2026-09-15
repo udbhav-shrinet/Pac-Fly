@@ -24,6 +24,7 @@
   </div>
   <div class="header-stats" role="status" aria-live="polite">
     <div class="stat"><span class="stat-label">Score</span><span class="stat-value" id="stat-score">0</span></div>
+    <div class="stat"><span class="stat-label">Lives</span><span class="stat-value" id="stat-lives">3</span></div>
     <div class="stat"><span class="stat-label">Heading</span><span class="stat-value" id="stat-heading">0°</span></div>
   </div>
 </header>
@@ -51,27 +52,42 @@
       <canvas id="brain-canvas"></canvas>
     </div>
 
-    <div class="meter-block">
-      <div class="meter-row">
-        <span class="meter-label meter-npf">NPF · Hunger</span>
-        <div class="meter-track"><div class="meter-fill fill-npf" id="meter-npf"></div></div>
+    <div class="mood-row">
+      <div class="arousal-ring-wrap">
+        <canvas id="arousal-ring" width="108" height="108"></canvas>
+        <div class="arousal-center">
+          <span class="arousal-pct" id="arousal-pct">0%</span>
+          <span class="arousal-caption">ALERT</span>
+        </div>
       </div>
-      <div class="meter-row">
-        <span class="meter-label meter-dopamine">PAM/MBON · Dopamine</span>
-        <div class="meter-track"><div class="meter-fill fill-dopamine" id="meter-dopamine"></div></div>
+      <div class="state-ticker-wrap">
+        <span class="state-ticker-label">Drive State</span>
+        <div class="state-ticker" id="state-ticker" data-state="GROOMING">GROOMING</div>
+        <div class="disgust-flag" id="disgust-flag" hidden>🤢 Bitter trap detected — Gr66a triggered</div>
       </div>
-      <div class="meter-row">
-        <span class="meter-label meter-octopamine">Octopamine · Stress</span>
-        <div class="meter-track"><div class="meter-fill fill-octopamine" id="meter-octopamine"></div></div>
-      </div>
-      <div class="meter-row">
-        <span class="meter-label meter-ppl1">PPL1 · Aversive</span>
-        <div class="meter-track"><div class="meter-fill fill-ppl1" id="meter-ppl1"></div></div>
-      </div>
-      <div class="meter-row">
-        <span class="meter-label meter-stamina">Sprint Stamina</span>
-        <div class="meter-track"><div class="meter-fill fill-stamina" id="meter-stamina"></div></div>
-      </div>
+    </div>
+
+    <div class="telem-graphs">
+      <article class="graph-card" data-metric="hunger">
+        <header><span class="graph-label">Hunger · NPF</span><span class="graph-value" id="val-npf">0%</span></header>
+        <canvas class="graph-canvas" id="graph-npf" width="300" height="48"></canvas>
+      </article>
+      <article class="graph-card" data-metric="panic">
+        <header><span class="graph-label">Panic · LC4/GF Looming</span><span class="graph-value" id="val-panic">0%</span></header>
+        <canvas class="graph-canvas" id="graph-panic" width="300" height="48"></canvas>
+      </article>
+      <article class="graph-card" data-metric="stress">
+        <header><span class="graph-label">Octopamine · Stress</span><span class="graph-value" id="val-stress">0%</span></header>
+        <canvas class="graph-canvas" id="graph-stress" width="300" height="48"></canvas>
+      </article>
+      <article class="graph-card" data-metric="dopamine">
+        <header><span class="graph-label">PAM/MBON · Dopamine</span><span class="graph-value" id="val-dopamine">0%</span></header>
+        <canvas class="graph-canvas" id="graph-dopamine" width="300" height="48"></canvas>
+      </article>
+      <article class="graph-card" data-metric="stamina">
+        <header><span class="graph-label">Stamina</span><span class="graph-value" id="val-stamina">100%</span></header>
+        <canvas class="graph-canvas" id="graph-stamina" width="300" height="48"></canvas>
+      </article>
     </div>
 
     <div class="gf-block">
