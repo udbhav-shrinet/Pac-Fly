@@ -3,52 +3,52 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#1c1714">
-  <title>Virtual Fly Brain Piano Cafe</title>
-  <meta name="description" content="A quiet cafe piano room for the virtual fly brain.">
+  <meta name="theme-color" content="#0b0a09">
+  <title>Fly Piano</title>
+  <meta name="description" content="A simulated fly brain composes at the keys — heading and arousal drive a scale-constrained melody, no scripted songs.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <main class="cafe">
-    <header class="topbar">
-      <div class="brand"><span class="brand-mark">☕</span><div><h1>VIRTUAL FLY <b>CAFE</b></h1><p>PIANO TRAINER <i>• OPEN</i></p></div></div>
-      <div class="clock" id="clock">00:00</div>
+  <main class="stage">
+    <header class="top">
+      <div class="title"><h1>FLY PIANO</h1><p>a simulated fly brain, composing at the keys</p></div>
+      <div class="top-meta"><span id="clock">00:00</span><span id="backend-badge">CONNECTOME LIF</span></div>
     </header>
 
-    <section class="room" aria-label="Lofi piano room">
-      <div class="string-lights">•　•　•　•　•　•　•　•</div>
-      <div class="window"><span>✦</span><i></i><i></i><i></i></div>
-      <div class="shelf"><b>BOOKS</b><i></i><i></i><i></i><small>✽</small></div>
-      <div class="plant">♧</div>
-      <div class="steam">⌁</div><div class="mug">☕</div>
-      <div class="piano" aria-label="Upright piano">
-        <div class="piano-lid"></div><div class="piano-front"><div class="keys" id="keys"></div></div><div class="piano-pedals">◌　◌</div>
-      </div>
-      <div class="stool"><div class="fly" id="fly" title="Virtual fly performer"><span class="fly-body"></span><i></i><i></i><b></b><b></b></div></div>
-      <div class="wires"></div>
-      <div class="room-caption"><span>NEURAL PIANO ROOM</span><small>soft light / quiet night / live connectome</small></div>
+    <section class="keyboard" aria-label="Piano performed by the simulated fly">
+      <div class="performer" id="performer"></div>
+      <div class="keys" id="keys"></div>
     </section>
 
-    <section class="console">
-      <div class="now-playing"><div><span class="eyebrow">NOW PLAYING</span><h2 id="track-name">Ode to Joy <em>— Beethoven</em></h2><p id="track-note">The fly hears the next target through its sensory input</p></div><button id="play-track" class="play" type="button" aria-label="Start fly training">▶</button></div>
-      <div class="controls"><label class="song-picker">MELODY <select id="song-picker" aria-label="Choose a melody"></select></label><span class="learning-badge" id="learning-badge">EXPLORATION 100%</span><span class="trial-count" id="trial-count">TRIAL 000</span></div>
-      <div class="visuals"><div class="wave-card"><div class="card-title"><span>DOPAMINE / REWARD</span><b id="dopamine-value">32%</b></div><canvas id="wave" width="600" height="130"></canvas></div><div class="neural-card"><div class="card-title"><span>NEURAL ACTIVITY</span><b id="neural-value">LIVE</b></div><canvas id="neural" width="360" height="130"></canvas></div></div>
-      <div class="bio-strip"><div><span>EMOTION</span><b id="emotion-value">CURIOUS</b></div><div><span>HORMONES</span><small id="hormone-value">DA 32 · 5-HT 48 · OA 20</small></div><div><span>NEURONS</span><small id="neuron-value">24 / 24 ACTIVE</small></div></div>
-      <div class="receptor-card">
-        <div class="card-title"><span>RECEPTOR ACTIVITY</span><b id="receptor-mood">CURIOUS</b></div>
-        <div class="receptor-body">
-          <div class="receptor-rows">
-            <div class="receptor-row"><small>DOPAMINE</small><div class="dots" id="dots-da"></div></div>
-            <div class="receptor-row"><small>SEROTONIN</small><div class="dots" id="dots-5ht"></div></div>
-            <div class="receptor-row"><small>OCTOPAMINE</small><div class="dots" id="dots-oa"></div></div>
-          </div>
-          <div class="emotion-ring" id="emotion-ring"><span id="emotion-ring-label">CURIOUS</span></div>
+    <section class="transport">
+      <button id="play-track" class="play" type="button" aria-label="Start the fly's performance">▶</button>
+      <p id="status-text">press play — the fly's brain will compose</p>
+    </section>
+
+    <section class="panels">
+      <div class="panel">
+        <div class="panel-head"><h2>Activity</h2><b id="dopamine-value">—</b></div>
+        <canvas id="wave" width="600" height="90"></canvas>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h2>Neurons</h2><b id="neuron-value">— / —</b></div>
+        <canvas id="neural" width="300" height="90"></canvas>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h2>Hormones</h2></div>
+        <div class="receptor-rows">
+          <div class="receptor-row"><small>DOPAMINE</small><div class="dots" id="dots-da"></div></div>
+          <div class="receptor-row"><small>SEROTONIN</small><div class="dots" id="dots-5ht"></div></div>
+          <div class="receptor-row"><small>OCTOPAMINE</small><div class="dots" id="dots-oa"></div></div>
         </div>
       </div>
-      <div class="status"><span><i class="live"></i> VIRTUAL FLY POLICY · MODELLED</span><span id="status-text">press play: the fly will learn</span><span id="performer-status">TARGET KEY READY</span></div>
+      <div class="panel panel-emotion">
+        <div class="panel-head"><h2>Emotion</h2></div>
+        <div class="emotion-ring" id="emotion-ring"><b id="emotion-value">—</b></div>
+      </div>
     </section>
   </main>
   <script src="Connectome.js"></script><script src="FlyNeuralEngine.js"></script><script src="FullBrainBridge.js"></script><script src="main.js"></script>

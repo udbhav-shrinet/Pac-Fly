@@ -1,19 +1,13 @@
 (() => {
   const $ = id => document.getElementById(id);
-  const tracks = [
-    { name: 'Ode to Joy', artist: 'Beethoven', notes: [[64,1],[64,1],[65,1],[67,1],[67,1],[65,1],[64,1],[62,1],[60,1],[60,1],[62,1],[64,1],[64,1.5],[62,.5],[62,2]] },
-    { name: 'Für Elise', artist: 'Beethoven', notes: [[64,.5],[63,.5],[64,.5],[63,.5],[64,.5],[59,.5],[62,.5],[60,.5],[57,1],[48,.5],[52,.5],[57,.5],[59,1]] },
-    { name: 'Moonlight Sonata', artist: 'Beethoven', notes: [[57,.5],[64,.5],[69,.5],[57,.5],[64,.5],[69,.5],[56,.5],[64,.5],[68,.5],[54,.5],[64,.5],[68,.5],[55,.5],[64,.5],[69,.5],[54,1]] },
-    { name: 'Canon in D', artist: 'Pachelbel', notes: [62,57,59,54,55,50,55,57,62,57,59,54,55,50,55,57].map(note => [note, .75]) },
-    { name: 'Greensleeves', artist: 'Traditional', notes: [64,67,69,69,71,69,67,65,64,62,60,62,64,64].map(note => [note, 1]) },
-    { name: 'Amazing Grace', artist: 'Traditional', notes: [60,65,69,65,69,67,65,62,60,65,69,65,69,72,69].map(note => [note, 1]) },
-    { name: 'Jingle Bells', artist: 'Traditional', notes: [[64,.5],[64,.5],[64,1],[64,.5],[64,.5],[64,1],[64,.5],[67,.5],[60,.5],[62,.5],[64,2],[65,.5],[65,.5],[65,.5],[65,.5],[65,.5],[65,.25],[64,.25],[64,.5],[64,.25],[64,.25],[65,.5],[64,1],[67,1]] },
-    { name: 'Happy Birthday', artist: 'Traditional', notes: [60,60,62,60,65,64,60,60,62,60,67,65,60,60,72,69].map(note => [note, .75]) },
-    { name: 'Scarborough Fair', artist: 'Traditional', notes: [69,69,72,74,76,74,72,69,67,69,72,74,72,69,67].map(note => [note, 1]) },
-    { name: 'Beethoven Fifth', artist: 'Beethoven', notes: [[67,.4],[67,.4],[67,.4],[63,1.6],[65,.4],[65,.4],[65,.4],[62,1.6]] }
-  ];
-  const audio = { context: null, master: null, volume: .65, timer: null, note: 0, playing: false, trial: 0, epsilon: 0, q: tracks.map(item => item.notes.map(() => new Map())), dopamine: .32, punishment: 0 };
-  const BEAT_MS = 180;
+
+  // C major pentatonic across ~2 octaves, entirely inside the 24-key range
+  // (MIDI 48-71). Every interval between any two of these notes is
+  // consonant, so whatever the brain sim picks, it can't land on a bad note.
+  const SCALE = [48, 50, 52, 55, 57, 60, 62, 64, 67, 69];
+  const BEAT_MS = 460;
+
+  const audio = { context: null, master: null, timer: null, playing: false };
   let brain = null;
   let brainBackend = 'CONNECTOME LIF';
   const brainReady = FullBrainBridge.create().then(value => {
@@ -24,24 +18,22 @@
     brainBackend = 'COMPACT CONNECTOME LIF';
   })).catch(error => {
     console.error('Virtual fly brain failed to load.', error);
-    throw error;
   });
-  let track = 0;
+
+  const melody = { degree: 4, beat: 0, activityEma: null };
+  let lastSnap = { arousal: .15, dopamine: .2 };
+
   const midiToHz = midi => 440 * Math.pow(2, (midi - 69) / 12);
-  function fitToKeyboard(midi) {
-    let fitted = midi;
-    while (fitted < 48) fitted += 12;
-    while (fitted > 71) fitted -= 12;
-    return fitted;
-  }
+
   function setupAudio() {
     audio.context ||= new (window.AudioContext || window.webkitAudioContext)();
     audio.master ||= audio.context.createGain();
-    audio.master.gain.value = audio.volume;
+    audio.master.gain.value = .8;
     audio.master.connect(audio.context.destination);
     if (audio.context.state === 'suspended') audio.context.resume();
   }
-  function playNote(midi, duration = .55, performer = false, correct = false) {
+
+  function playNote(midi, duration, gain) {
     setupAudio();
     const now = audio.context.currentTime;
     const envelope = audio.context.createGain();
@@ -52,140 +44,203 @@
     fundamental.type = 'triangle'; fundamental.frequency.value = midiToHz(midi);
     second.type = 'sine'; second.frequency.value = midiToHz(midi) * 2;
     third.type = 'sine'; third.frequency.value = midiToHz(midi) * 3;
-    mix.gain.value = .7;
+    mix.gain.value = .55;
     envelope.gain.setValueAtTime(.0001, now);
-    envelope.gain.exponentialRampToValueAtTime(.22, now + .012);
+    envelope.gain.exponentialRampToValueAtTime(Math.max(.02, gain), now + .015);
     envelope.gain.exponentialRampToValueAtTime(.0001, now + duration);
     fundamental.connect(mix); second.connect(mix); third.connect(mix);
     mix.connect(envelope).connect(audio.master);
     fundamental.start(now); second.start(now); third.start(now);
     fundamental.stop(now + duration + .05); second.stop(now + duration + .05); third.stop(now + duration + .05);
+
     const keyIndex = Math.max(0, Math.min(23, midi - 48));
-    const key = $('keys').children[keyIndex];
     document.querySelectorAll('.keys button.active').forEach(item => item.classList.remove('active'));
-    if (key) {
-      key.classList.add('active');
-      window.setTimeout(() => key.classList.remove('active'), duration * 1000);
-    }
-    $('fly').classList.toggle('performing', performer);
-    $('performer-status').textContent = performer ? (correct ? 'DOPAMINE + TARGET HIT' : 'PUNISHMENT · WRONG KEY') : 'TARGET KEY READY';
-    $('status-text').textContent = performer ? `fly selected key ${keyIndex + 1}` : `fly is learning the next target`;
+    const key = $('keys').children[keyIndex];
+    if (key) { key.classList.add('active'); window.setTimeout(() => key.classList.remove('active'), duration * 1000); }
+
+    const performer = $('performer');
+    performer.style.left = `${((keyIndex + .5) / 24) * 100}%`;
+    performer.classList.remove('hit'); void performer.offsetWidth; performer.classList.add('hit');
+    window.setTimeout(() => performer.classList.remove('hit'), 160);
   }
-  function highlightTarget(midi) {
-    document.querySelectorAll('.keys button.target').forEach(item => item.classList.remove('target'));
-    const target = $('keys').children[Math.max(0, Math.min(23, midi - 48))];
-    if (target) target.classList.add('target');
+
+  // A soft held root note underneath the brain-chosen melody — a fixed
+  // accompaniment layer (like a sustain pedal), not a decision the fly makes.
+  function playDrone(midi, duration, gain) {
+    setupAudio();
+    const now = audio.context.currentTime;
+    const envelope = audio.context.createGain();
+    const osc = audio.context.createOscillator();
+    osc.type = 'sine'; osc.frequency.value = midiToHz(midi);
+    envelope.gain.setValueAtTime(.0001, now);
+    envelope.gain.exponentialRampToValueAtTime(Math.max(.01, gain), now + .4);
+    envelope.gain.exponentialRampToValueAtTime(.0001, now + duration);
+    osc.connect(envelope).connect(audio.master);
+    osc.start(now); osc.stop(now + duration + .1);
   }
-  function renderTrack() {
-    const current = tracks[track];
-    $('track-name').innerHTML = `${current.name} <em>— ${current.artist}</em>`;
-    $('track-note').textContent = 'The fly hears the next target through its sensory input';
-    const picker = $('song-picker');
-    picker.innerHTML = tracks.map((item, index) => `<option value="${index}">${item.name} — ${item.artist}</option>`).join('');
-    picker.value = track;
-  }
-  function stopTrack() { clearInterval(audio.timer); audio.playing = false; $('play-track').textContent = '▶'; $('fly').classList.remove('performing'); $('performer-status').textContent = 'FLY IS LISTENING'; }
-  function startTrack() {
-    setupAudio(); stopTrack(); audio.note = 0; audio.trial++; audio.epsilon = 0; audio.playing = true; $('play-track').textContent = 'Ⅱ';
-    $('status-text').textContent = 'loading virtual brain...';
-    brainReady.then(() => {
-      if (!audio.playing) return;
-      $('status-text').textContent = `${brainBackend} is choosing`;
-      tick();
-    }).catch(() => {
-      stopTrack();
-      $('status-text').textContent = 'virtual brain unavailable';
-    });
-    const tick = () => {
-      if (!audio.playing) return;
-      const notes = tracks[track].notes;
-      const targetPair = notes[audio.note % notes.length];
-      const target = fitToKeyboard(targetPair[0]);
-      highlightTarget(target);
-      const sense = { sugarBearing: 0, sugarDist: 1, ghostBearing: 0, ghostDist: null, headingIndex: audio.note % 4, foodOdor: 1, dangerOdor: 0, temperature: .5 };
-      if (brain) brain.update(.1, sense);
-      const memory = audio.q[track][audio.note % notes.length];
-      const learned = memory.get(target) || 0;
-      const explore = Math.random() < audio.epsilon;
-      const midi = explore ? 48 + Math.floor(Math.random() * 24) : target;
-      const correct = midi === target;
-      memory.set(midi, (memory.get(midi) || 0) + (correct ? 1 : -.45));
-      if (!correct && Math.random() < .55) memory.set(target, (memory.get(target) || 0) + .7);
-      if (brain) correct ? brain.onPelletEaten(false) : brain.onHazardEaten();
-      playNote(midi, Math.max(.1, .16 * targetPair[1]), true, correct);
-      $('learning-badge').textContent = `EXPLORATION ${Math.round(audio.epsilon * 100)}%`;
-      $('trial-count').textContent = `TRIAL ${String(audio.trial).padStart(3, '0')}`;
-      audio.dopamine = correct ? Math.min(1, audio.dopamine + .12) : Math.max(0, audio.dopamine - .06);
-      audio.punishment = correct ? Math.max(0, audio.punishment - .08) : Math.min(1, audio.punishment + .12);
-      $('dopamine-value').textContent = `${Math.round(audio.dopamine * 100)}%`;
-      $('neural-value').textContent = correct ? 'REINFORCED' : 'PUNISHED';
-      $('emotion-value').textContent = correct ? (audio.dopamine > .72 ? 'JOYFUL' : 'FOCUSED') : (audio.punishment > .55 ? 'FRUSTRATED' : 'CURIOUS');
-      $('hormone-value').textContent = `DA ${Math.round(audio.dopamine * 100)} · 5-HT ${Math.round((1 - audio.punishment) * 62)} · OA ${Math.round(audio.punishment * 100)}`;
-      $('neuron-value').textContent = `${correct ? 24 : 8 + Math.floor(Math.random() * 10)} / 24 ACTIVE`;
-      updateReceptors(audio.dopamine, 1 - audio.punishment, audio.punishment, $('emotion-value').textContent);
-      if (brain && brain.state) {
-        const neuralState = brain.state;
-        const totalNeurons = brain.neuronCount || 66;
-        const activeNeurons = brain.activeNeuronCount || Math.round((neuralState.arousalLevel || 0) * totalNeurons);
-        $('neuron-value').textContent = brainBackend === 'FLYWIRE WHOLE-BRAIN'
-          ? `${activeNeurons.toLocaleString()} / ${totalNeurons.toLocaleString()} ACTIVE`
-          : `${Math.round((neuralState.arousalLevel || 0) * totalNeurons)} / ${totalNeurons} ACTIVE`;
-        $('hormone-value').textContent = `DA ${Math.round((neuralState.dopamineTransient || 0) * 100)} · 5-HT ${Math.round((1 - (neuralState.ppl1Transient || 0)) * 62)} · OA ${Math.round((neuralState.octopamineLevel || 0) * 100)}`;
-        $('emotion-value').textContent = neuralState.behaviorState || 'FOCUSED';
-        $('status-text').textContent = `${brainBackend} · ${neuralState.behaviorState || 'ACTIVE'}`;
-        updateReceptors((neuralState.dopamineTransient || 0), 1 - (neuralState.ppl1Transient || 0), (neuralState.octopamineLevel || 0), neuralState.behaviorState || 'FOCUSED');
-      }
-      audio.note++;
-      $('clock').textContent = `${String(Math.floor(audio.note / 2)).padStart(2, '0')}:${String((audio.note * 30) % 60).padStart(2, '0')}`;
-      audio.timer = setTimeout(tick, Math.max(90, targetPair[1] * BEAT_MS));
-    };
-    tick();
-  }
-  $('play-track').addEventListener('click', () => audio.playing ? stopTrack() : startTrack());
-  $('song-picker').addEventListener('change', event => { stopTrack(); track = Number(event.target.value); renderTrack(); });
-  [...Array(24)].forEach((_, index) => {
-    const key = document.createElement('button'); key.type = 'button'; key.setAttribute('aria-label', `Piano key ${index + 1}`);
-    key.setAttribute('aria-hidden', 'true'); $('keys').appendChild(key);
-  });
+
   const RECEPTOR_DOTS = 14;
   const dotRows = { da: $('dots-da'), '5ht': $('dots-5ht'), oa: $('dots-oa') };
-  Object.values(dotRows).forEach(row => {
-    for (let i = 0; i < RECEPTOR_DOTS; i++) row.appendChild(document.createElement('i'));
-  });
+  Object.values(dotRows).forEach(row => { for (let i = 0; i < RECEPTOR_DOTS; i++) row.appendChild(document.createElement('i')); });
   function setReceptorRow(row, level) {
     const lit = Math.round(Math.max(0, Math.min(1, level)) * RECEPTOR_DOTS);
-    [...row.children].forEach((dot, index) => {
-      dot.classList.toggle('lit', index < lit);
-      dot.style.opacity = index < lit ? Math.max(.45, level) : .16;
-    });
+    [...row.children].forEach((dot, index) => { dot.style.opacity = index < lit ? Math.max(.45, level) : .15; });
   }
   function updateReceptors(daLevel, serotoninLevel, oaLevel, mood) {
     setReceptorRow(dotRows.da, daLevel);
     setReceptorRow(dotRows['5ht'], serotoninLevel);
     setReceptorRow(dotRows.oa, oaLevel);
-    const ring = $('emotion-ring');
     const balance = Math.round(Math.max(0, Math.min(1, daLevel * .6 + serotoninLevel * .4 - oaLevel * .3)) * 100);
+    const ring = $('emotion-ring');
     ring.style.setProperty('--pct', `${balance}%`);
     ring.dataset.mood = (mood || 'CURIOUS').toLowerCase();
-    $('emotion-ring-label').textContent = mood || 'CURIOUS';
-    $('receptor-mood').textContent = mood || 'CURIOUS';
+    $('emotion-value').textContent = mood || 'CURIOUS';
   }
-  updateReceptors(.32, .48, .2, 'CURIOUS');
+
+  // Deterministic stand-in oscillation while the real connectome is still
+  // loading, so the piano starts playing immediately instead of waiting —
+  // once `brain` resolves, live simulated state takes over below.
+  function fallbackSnapshot(t) {
+    const heading = ((Math.sin(t * .1) + 1) / 2) * Math.PI * 2;
+    const arousal = .2 + (Math.sin(t * .05) + 1) / 2 * .35;
+    const dopamine = .25 + (Math.sin(t * .09 + 1) + 1) / 2 * .3;
+    const punishment = (Math.sin(t * .07 + 2) + 1) / 2 * .2;
+    return { heading, arousal, dopamine, punishment, octopamine: punishment, mood: 'CURIOUS', activeNeuronCount: Math.round(arousal * 24), neuronCount: 24, activity: null };
+  }
+
+  function brainSnapshot(t) {
+    if (!brain || !brain.state) return fallbackSnapshot(t);
+    const s = brain.state;
+    const activity = brain.activity || brain.connectome?.calcium || null;
+    return {
+      heading: s.headingAngle || 0,
+      arousal: s.arousalLevel || 0,
+      dopamine: s.dopamineTransient || 0,
+      punishment: s.ppl1Transient || 0,
+      octopamine: s.octopamineLevel || 0,
+      mood: s.behaviorState || 'CURIOUS',
+      activeNeuronCount: brain.activeNeuronCount || Math.round((s.arousalLevel || 0) * (brain.neuronCount || 24)),
+      neuronCount: brain.neuronCount || 24,
+      activity,
+    };
+  }
+
+  function stopTrack() {
+    clearInterval(audio.timer);
+    audio.playing = false;
+    $('play-track').textContent = '▶';
+    $('status-text').textContent = 'paused — press play to resume the performance';
+  }
+
+  function startTrack() {
+    setupAudio();
+    stopTrack();
+    audio.playing = true;
+    $('play-track').textContent = 'Ⅱ';
+    $('status-text').textContent = 'the brain is warming up…';
+
+    const tick = () => {
+      if (!audio.playing) return;
+      const t = performance.now() / 1000;
+      const snap = brainSnapshot(t);
+      lastSnap = snap;
+
+      if (brain) {
+        // headingIndex is a free-running clock, not derived from the brain's
+        // own output — FullBrainBridge's headingAngle just echoes whatever
+        // index it's given, so feeding it back in would collapse to a fixed point.
+        const headingIndex = Math.floor(t / 1.4) % 4;
+        brain.update(.1, {
+          sugarBearing: Math.sin(t * .2), sugarDist: 3 + Math.sin(t * .11) * 2.5,
+          ghostBearing: Math.cos(t * .17), ghostDist: 6 + Math.sin(t * .13) * 4,
+          headingIndex, foodOdor: .7, dangerOdor: .12, temperature: .5,
+        });
+      }
+
+      // Register drifts with overall arousal (a real, continuously-updated
+      // readout of network-wide spiking). On top of that, a burst detector
+      // compares this tick's total activity against its own rolling average —
+      // when the network fires noticeably above or below its own recent
+      // baseline, that punctuates the melody up or down. Both signals come
+      // straight out of the live simulation; nothing here is scripted.
+      const activity = snap.activity;
+      const activitySum = activity && activity.length ? activity.reduce((a, b) => a + b, 0) : null;
+      let burst = 0;
+      if (activitySum != null) {
+        melody.activityEma = melody.activityEma == null ? activitySum : melody.activityEma * .85 + activitySum * .15;
+        if (melody.activityEma > 1e-3) {
+          const ratio = activitySum / melody.activityEma;
+          burst = Math.max(-3, Math.min(3, Math.round((ratio - 1) * 6)));
+        }
+      }
+      const arousalTerm = Math.max(0, Math.min(1, snap.arousal / .22));
+      const rewardTerm = snap.dopamine - snap.punishment * .5;
+      const centerFrac = Math.max(0, Math.min(1, arousalTerm + rewardTerm * .25));
+      const centerDegree = Math.round(centerFrac * (SCALE.length - 1));
+      const targetDegree = Math.max(0, Math.min(SCALE.length - 1, centerDegree + burst));
+      const diff = targetDegree - melody.degree;
+      const step = Math.sign(diff) * Math.min(2, Math.abs(diff));
+      melody.degree = Math.max(0, Math.min(SCALE.length - 1, melody.degree + step));
+      let midi = SCALE[melody.degree];
+      if (arousalTerm > .8 && melody.beat % 8 === 0) midi = Math.min(71, midi + 12);
+
+      const durationBeats = Math.max(.45, 1.5 - snap.arousal * .95);
+      const gain = .12 + snap.dopamine * .18;
+      playNote(midi, durationBeats * BEAT_MS / 1000 * .82, gain);
+
+      if (melody.beat % 4 === 0) {
+        const root = melody.degree < 5 ? SCALE[0] : SCALE[5];
+        playDrone(root, durationBeats * 4 * BEAT_MS / 1000, .045);
+      }
+
+      if (melody.degree === 0 && brain) brain.onPelletEaten(false);
+
+      $('dopamine-value').textContent = `${Math.round(snap.dopamine * 100)}%`;
+      $('neuron-value').textContent = `${Math.round(snap.activeNeuronCount).toLocaleString()} / ${Math.round(snap.neuronCount).toLocaleString()}`;
+      $('backend-badge').textContent = brain ? brainBackend : 'BOOTING…';
+      $('status-text').textContent = brain ? `${brainBackend} · ${snap.mood}` : 'placeholder pulse while the connectome loads…';
+      updateReceptors(snap.dopamine, 1 - snap.punishment, snap.octopamine, snap.mood);
+
+      melody.beat++;
+      $('clock').textContent = `${String(Math.floor(melody.beat / 8)).padStart(2, '0')}:${String((melody.beat * 7) % 60).padStart(2, '0')}`;
+      audio.timer = setTimeout(tick, durationBeats * BEAT_MS);
+    };
+    tick();
+    brainReady.finally(() => { if (audio.playing) $('status-text').textContent = `${brainBackend} · connected`; });
+  }
+
+  $('play-track').addEventListener('click', () => audio.playing ? stopTrack() : startTrack());
+  [...Array(24)].forEach((_, index) => {
+    const key = document.createElement('button'); key.type = 'button';
+    key.setAttribute('aria-label', `Piano key ${index + 1}`); key.setAttribute('aria-hidden', 'true');
+    $('keys').appendChild(key);
+  });
+  updateReceptors(.25, .55, .12, 'CURIOUS');
+
   function draw() {
     const time = performance.now() / 1000, wave = $('wave'), wctx = wave.getContext('2d'), neural = $('neural'), nctx = neural.getContext('2d');
-    wctx.clearRect(0, 0, wave.width, wave.height); wctx.strokeStyle = '#d9b579'; wctx.lineWidth = 2; wctx.beginPath();
-    for (let x = 0; x < wave.width; x++) { const y = 65 + Math.sin(x / 38 + time * 2) * 16 + Math.sin(x / 13 + time) * 5; x ? wctx.lineTo(x, y) : wctx.moveTo(x, y); } wctx.stroke();
+    // Amplitude and speed track real arousal/dopamine readouts, so a calmer
+    // or more rewarded brain visibly settles or livens the line.
+    const amp = 6 + lastSnap.arousal * 55, speed = 1 + lastSnap.dopamine * 2.5;
+    wctx.clearRect(0, 0, wave.width, wave.height); wctx.strokeStyle = '#d9a34f'; wctx.lineWidth = 1.5; wctx.beginPath();
+    for (let x = 0; x < wave.width; x++) { const y = 45 + Math.sin(x / 38 + time * speed) * amp + Math.sin(x / 13 + time) * (amp * .3); x ? wctx.lineTo(x, y) : wctx.moveTo(x, y); } wctx.stroke();
     nctx.clearRect(0, 0, neural.width, neural.height);
     const activity = brain?.activity || brain?.connectome?.calcium;
-    nctx.fillStyle = '#bdcda9';
-    for (let i = 0; i < 30; i++) {
-      const live = activity ? activity[i % activity.length] : (Math.sin(time * 3 + i) + 1) * .5;
-      const x = (i * 71) % neural.width, y = 18 + ((i * 43) % 92), pulse = 2 + Math.min(3, live * 2);
-      nctx.globalAlpha = .35 + Math.min(.65, live);
+    const cols = 8, rows = 3;
+    for (let i = 0; i < cols * rows; i++) {
+      const raw = activity ? activity[i % activity.length] : (Math.sin(time * 3 + i) + 1) * .5;
+      // Spike counts have no fixed ceiling across backends, so squash softly
+      // toward 0..1 instead of assuming a scale.
+      const live = activity ? 1 - 1 / (1 + raw * .3) : raw;
+      const col = i % cols, row = Math.floor(i / cols);
+      const x = (col + .5) * (neural.width / cols), y = (row + .5) * (neural.height / rows);
+      const pulse = 1.4 + live * 2.4;
+      nctx.globalAlpha = .18 + live * .75;
+      nctx.fillStyle = live > .5 ? '#d9a34f' : '#8b8175';
       nctx.beginPath(); nctx.arc(x, y, pulse, 0, Math.PI * 2); nctx.fill();
     }
     nctx.globalAlpha = 1;
     requestAnimationFrame(draw);
   }
-  renderTrack(); draw();
+  draw();
 })();
