@@ -13,6 +13,9 @@ class FullBrainBridge {
     this.latest = { firedNeurons: 0, groupSpikeCounts: new Uint16Array(meta.group_count), tickCount: 0 };
     this.activity = new Float32Array(meta.group_count);
     this.headingAngle = 0;
+    this.hungerLevel = 0;
+    this.threatLevel = 0;
+    this.lastMotor = { left: 0, right: 0, forward: 0, reverse: 0, rest: true };
     this.ready = false;
     this._accum = 0;
     this._workerPromise = new Promise((resolve, reject) => {
@@ -114,16 +117,27 @@ class FullBrainBridge {
     // a turn at every junction. Preserve exploratory turn energy, but give
     // symmetric activity a forward-biased motor output so the fly traverses
     // the map instead of spinning in place.
-    const forward = walk + turn * 0.8;
-    return { left: turn * 0.12, right: turn * 0.12, forward, reverse: reverse + flee, rest: forward < 0.08 && flee === 0 };
+    const threatBearing = this.latestSenses?.ghostBearing || 0;
+    const threat = Math.max(this.threatLevel, flee / 8);
+    const left = turn * 0.08 + Math.max(0, threatBearing) * threat * 1.8;
+    const right = turn * 0.08 + Math.max(0, -threatBearing) * threat * 1.8;
+    const forward = walk + turn * 0.55;
+    const reverseDrive = reverse + threat * 2.4;
+    const motor = { left, right, forward, reverse: reverseDrive, rest: forward < 0.12 && reverseDrive < 0.18 && threat < 0.2 };
+    this.lastMotor = motor;
+    return motor;
   }
 
   get state() {
-    const hunger = this._activity('DRIVE_HUNGER');
-    const fear = this._activity('DRIVE_FEAR')
+    const hungerRaw = Math.min(1, this._activity('DRIVE_HUNGER') / 8);
+    const fearRaw = Math.min(1, (this._activity('DRIVE_FEAR')
       + this._activity('DN_STARTLE')
       + this._activity('MECH_JO')
-      + this._activity('OLF_ORN_DANGER');
+      + this._activity('OLF_ORN_DANGER')) / 8);
+    this.hungerLevel += (hungerRaw - this.hungerLevel) * 0.08;
+    this.threatLevel += (fearRaw - this.threatLevel) * 0.16;
+    const hunger = this.hungerLevel;
+    const fear = this.threatLevel;
     const dopamine = this._activity('MB_DAN_REW');
     const arousal = Math.min(1, this.activity.reduce((sum, value) => sum + value, 0) / 1600);
     const drives = {
@@ -133,12 +147,13 @@ class FullBrainBridge {
       rest: Math.min(1, this._activity('DRIVE_FATIGUE') / 8),
     };
     return {
-      headingAngle: this.headingAngle, npfLevel: Math.min(1, hunger / 10),
-      dopamineTransient: Math.min(1, dopamine / 5), panicLevel: Math.min(1, fear / 8),
-      octopamineLevel: Math.min(1, fear / 10), arousalLevel: arousal,
+      headingAngle: this.headingAngle, npfLevel: hunger,
+      dopamineTransient: Math.min(1, dopamine / 5), panicLevel: fear,
+      octopamineLevel: fear, arousalLevel: arousal,
       ppl1Transient: Math.min(1, this._activity('MB_DAN_PUN') / 5),
-      giantFiberFiring: fear > 0, stunned: false, disgusted: false, exhausted: false,
-      behaviorState: fear > 0 ? 'ESCAPE' : hunger > 0 ? 'FORAGING' : 'ALERT',
+      giantFiberFiring: fear > 0.45, stunned: false, disgusted: false, exhausted: false,
+      behaviorState: fear > 0.28 ? 'ESCAPE' : hunger > 0.36 ? 'FORAGING' : this.lastMotor.rest ? 'RESTING' : 'EXPLORING',
+      motorAction: this.lastMotor,
       senses: this.latestSenses || {},
       drives,
     };

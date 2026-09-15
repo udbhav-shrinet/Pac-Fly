@@ -82,6 +82,12 @@ four-way compass cue. These are game-environment models mapped into neural
 populations; the app does not claim literal camera vision, microphone hearing,
 or validated sensory physiology.
 
+Telemetry uses smoothed proxy levels rather than raw spike counts, and the
+motor card reports the action selected for the current maze decision
+(FORWARD, LEFT, RIGHT, ESCAPE / REVERSE, or RESTING). Equal left/right activity
+in the aggregated graph is treated as forward exploration; a nearby threat
+adds directional escape drive instead of forcing a perpetual turn.
+
 An energizer creates an 8-second frightened-ghost interval. Capturing a
 frightened ghost awards 200 points and sends a larger reward event to the
 FlyWire bridge; ordinary sugar remains a small reward. The timeline uses

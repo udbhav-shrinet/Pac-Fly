@@ -113,7 +113,7 @@
   });
 
   const history = [], timeline = [], maxHistory = 90;
-  const colors = { FORAGING: '#6df0a4', ESCAPE: '#ff5474', DISGUST: '#c285ff', EXHAUSTED: '#74808a', GROOMING: '#47d8e8', ALERT: '#e6f2f4' };
+  const colors = { FORAGING: '#6df0a4', ESCAPE: '#ff5474', DISGUST: '#c285ff', EXHAUSTED: '#74808a', GROOMING: '#47d8e8', ALERT: '#e6f2f4', RESTING: '#8ea7b0', EXPLORING: '#ffc857' };
   const clamp = value => Math.max(0, Math.min(1, value || 0));
   function drawRadar(s) {
     const canvas = $('drive-chart'), ctx = canvas.getContext('2d'), w = canvas.width, h = canvas.height, cx = w / 2, cy = h / 2 + 5, r = 57;
@@ -200,7 +200,7 @@
     $('sense-odor').textContent = `ODOR ${Math.round(Math.max(senses.foodOdor || 0, senses.dangerOdor || 0) * 100)}%`;
     $('sense-vibration').textContent = `VIBRATION ${Math.round((senses.vibration || 0) * 100)}%`;
     $('sense-touch').textContent = `TOUCH ${Math.round(Math.max(senses.contact || 0, senses.hazardProximity || 0) * 100)}%`;
-    $('arousal-pct').textContent = `${Math.round(s.arousalLevel * 100)}%`; $('motor-action').textContent = `ARENA HEADING ${Math.round(s.headingAngle * 180 / Math.PI)}°`; $('gf-status').textContent = `ESCAPE PROXY · ${s.giantFiberFiring ? 'ACTIVE' : 'IDLE'}`; $('disgust-flag').textContent = s.disgusted ? 'AVERSIVE PROXY ACTIVE' : 'AVERSIVE PROXY QUIET'; $('stat-score').textContent = game.score; $('stat-lives').textContent = game.lives;
+    $('arousal-pct').textContent = `${Math.round(s.arousalLevel * 100)}%`; $('motor-action').textContent = game.motorAction || s.motorAction || 'RESTING'; $('motor-sub').textContent = `heading ${Math.round(s.headingAngle * 180 / Math.PI)}° • live action`; $('gf-status').textContent = `ESCAPE PROXY · ${s.giantFiberFiring ? 'ACTIVE' : 'IDLE'}`; $('disgust-flag').textContent = s.disgusted ? 'AVERSIVE PROXY ACTIVE' : 'AVERSIVE PROXY QUIET'; $('stat-score').textContent = game.score; $('stat-lives').textContent = game.lives;
     if (engine instanceof FullBrainBridge && engine.latest) $('brain-status').textContent = `FLYWIRE • 139,255 neurons • TICK ${engine.latest.tickCount}`;
     drawRadar(s); drawScatter(s); drawTrend(); drawAvatar(s); requestAnimationFrame(loop);
   }

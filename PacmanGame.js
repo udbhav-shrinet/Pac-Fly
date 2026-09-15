@@ -141,6 +141,7 @@ class PacmanGame {
     this._invulnerableUntil = 0;
     this.exhausted = false;
     this.paused = false;
+    this.motorAction = 'RESTING';
 
     this._buildBoard();
     this._resetActors();
@@ -604,6 +605,9 @@ class PacmanGame {
     };
     const motor = this.callbacks.brainTick ? this.callbacks.brainTick(sense, dt) : null;
     if (!motor) return; // no fixed-timestep brain tick landed this frame — hold the current decision
+    const motorValues = { left: motor.left || 0, right: motor.right || 0, forward: motor.forward || 0, reverse: motor.reverse || 0 };
+    const strongest = Object.entries(motorValues).sort((a, b) => b[1] - a[1])[0];
+    this.motorAction = motor.rest ? 'RESTING' : strongest[0] === 'reverse' ? 'ESCAPE / REVERSE' : strongest[0].toUpperCase();
 
     // Strict survival override: resting/grooming is never honored with a
     // predator nearby, whatever the network's momentary motor readout
