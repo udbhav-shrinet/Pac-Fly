@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b0a09">
   <title>Fly Piano</title>
-  <meta name="description" content="A simulated fly brain composes at the keys — heading and arousal drive a scale-constrained melody, no scripted songs.">
+  <meta name="description" content="A simulated fly performs real piano pieces in rhythm while its live brain-sim state drives a full stats dashboard.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
@@ -14,20 +14,30 @@
 <body>
   <main class="stage">
     <header class="top">
-      <div class="title"><h1>FLY PIANO</h1><p>a simulated fly brain, composing at the keys</p></div>
+      <div class="title"><h1>FLY PIANO</h1><p>the fly performs real pieces — its brain sim drives the stats, not the notes</p></div>
       <div class="top-meta"><span id="clock">00:00</span><span id="backend-badge">CONNECTOME LIF</span></div>
     </header>
+
+    <section class="now-playing">
+      <div class="now-playing-info">
+        <span class="eyebrow">NOW PERFORMING</span>
+        <h2 id="track-title">Ode to Joy <em>— Beethoven</em></h2>
+      </div>
+      <label class="song-picker">SONG <select id="song-picker" aria-label="Choose a piece"></select></label>
+    </section>
 
     <section class="keyboard-card" aria-label="Piano performed by the simulated fly">
       <div class="keyboard">
         <div class="performer" id="performer"><i></i></div>
         <div class="keys" id="keys"></div>
       </div>
+      <div class="progress"><div class="progress-fill" id="progress-fill"></div></div>
     </section>
 
     <section class="transport">
       <button id="play-track" class="play" type="button" aria-label="Start the fly's performance">▶</button>
-      <p id="status-text">press play — the fly's brain will compose</p>
+      <p id="status-text">press play — the fly will perform this piece exactly, in rhythm</p>
+      <span class="tempo" id="tempo-value">— BPM</span>
     </section>
 
     <section class="panel panel-hero">
@@ -51,6 +61,16 @@
       <div class="panel panel-emotion">
         <div class="panel-head"><h2>Emotion</h2></div>
         <div class="emotion-ring" id="emotion-ring"><b id="emotion-value">—</b></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h2>Drives</h2></div>
+      <div class="drive-rows" id="drive-rows">
+        <div class="drive-row"><small>FORAGE</small><div class="bar"><i id="drive-foraging"></i></div></div>
+        <div class="drive-row"><small>ESCAPE</small><div class="bar"><i id="drive-escape"></i></div></div>
+        <div class="drive-row"><small>EXPLORE</small><div class="bar"><i id="drive-explore"></i></div></div>
+        <div class="drive-row"><small>REST</small><div class="bar"><i id="drive-rest"></i></div></div>
       </div>
     </section>
   </main>
