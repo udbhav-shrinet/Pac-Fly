@@ -71,25 +71,51 @@
     if (audio.context.state === 'suspended') audio.context.resume();
   }
 
+  // A real piano note is percussive (near-instant attack from the hammer
+  // strike), rings out well past its written duration (the string keeps
+  // decaying even after the next note starts, especially with the sustain
+  // pedal), and its higher partials die away faster than the fundamental —
+  // that's what gives it a bright attack that mellows as the note rings.
+  // The previous version had every harmonic share one envelope that cut
+  // off hard at the exact rhythmic duration, which reads as a synth blip,
+  // not a piano. This models the same properties instead.
+  const HARMONICS = [1, 2, 3, 4, 5, 6, 8];
+  const HARMONIC_AMPS = [1, .62, .38, .22, .14, .09, .05];
   function playNote(midi, duration, gain) {
     setupAudio();
     const now = audio.context.currentTime;
-    const envelope = audio.context.createGain();
-    const fundamental = audio.context.createOscillator();
-    const second = audio.context.createOscillator();
-    const third = audio.context.createOscillator();
-    const mix = audio.context.createGain();
-    fundamental.type = 'triangle'; fundamental.frequency.value = midiToHz(midi);
-    second.type = 'sine'; second.frequency.value = midiToHz(midi) * 2;
-    third.type = 'sine'; third.frequency.value = midiToHz(midi) * 3;
-    mix.gain.value = .55;
-    envelope.gain.setValueAtTime(.0001, now);
-    envelope.gain.exponentialRampToValueAtTime(Math.max(.02, gain), now + .015);
-    envelope.gain.exponentialRampToValueAtTime(.0001, now + duration);
-    fundamental.connect(mix); second.connect(mix); third.connect(mix);
-    mix.connect(envelope).connect(audio.master);
-    fundamental.start(now); second.start(now); third.start(now);
-    fundamental.stop(now + duration + .05); second.stop(now + duration + .05); third.stop(now + duration + .05);
+    const freq = midiToHz(midi);
+    const ring = duration * 1.6 + .5; // notes ring out past their rhythmic slot, like a real struck string
+    const voice = audio.context.createGain();
+    voice.connect(audio.master);
+
+    HARMONICS.forEach((h, i) => {
+      const osc = audio.context.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.value = freq * h + (h > 1 ? (Math.random() - .5) * h * .6 : 0); // slight inharmonicity, like real strings
+      const partialGain = audio.context.createGain();
+      const amp = gain * HARMONIC_AMPS[i];
+      const decay = ring / (1 + i * .55); // higher partials fade faster than the fundamental
+      partialGain.gain.setValueAtTime(.0001, now);
+      partialGain.gain.exponentialRampToValueAtTime(amp, now + .004);
+      partialGain.gain.exponentialRampToValueAtTime(.0001, now + decay);
+      osc.connect(partialGain).connect(voice);
+      osc.start(now);
+      osc.stop(now + decay + .05);
+    });
+
+    // Hammer-strike transient: a brief burst of filtered noise at onset.
+    const noiseBuf = audio.context.createBuffer(1, audio.context.sampleRate * .02, audio.context.sampleRate);
+    const noiseData = noiseBuf.getChannelData(0);
+    for (let i = 0; i < noiseData.length; i++) noiseData[i] = (Math.random() * 2 - 1) * (1 - i / noiseData.length);
+    const noise = audio.context.createBufferSource();
+    noise.buffer = noiseBuf;
+    const noiseFilter = audio.context.createBiquadFilter();
+    noiseFilter.type = 'highpass'; noiseFilter.frequency.value = freq * 1.5;
+    const noiseGain = audio.context.createGain();
+    noiseGain.gain.value = gain * .35;
+    noise.connect(noiseFilter).connect(noiseGain).connect(voice);
+    noise.start(now);
 
     const keyIndex = Math.max(0, Math.min(23, midi - 48));
     document.querySelectorAll('.keys button.active').forEach(item => item.classList.remove('active'));
