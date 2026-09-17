@@ -4,6 +4,7 @@
     subInput: document.getElementById("sub-input"),
     statusDot: document.getElementById("status-dot"),
     statusText: document.getElementById("status-text"),
+    retryBtn: document.getElementById("retry-btn"),
     postCard: document.getElementById("post-card"),
     postMeta: document.getElementById("post-meta"),
     postTitle: document.getElementById("post-title"),
@@ -44,6 +45,22 @@
   let loadToken = 0;
   let activeAbortController = null;
   let isTransitioning = false;
+  let retryTimer = null;
+  let retryAttempt = 0;
+  let retryDelayMs = 0;
+
+  const INITIAL_RETRY_MS = 3000;
+  const MAX_RETRY_MS = 30000;
+
+  function describeError(err) {
+    if (!err) return "unknown error";
+    if (err.name === "AbortError") return "timed out";
+    const msg = err.message || String(err);
+    if (/Failed to fetch|NetworkError|TypeError/i.test(msg)) {
+      return "network/CORS blocked";
+    }
+    return msg;
+  }
 
   function normalizePost(d) {
     return {
@@ -136,51 +153,104 @@
   }
 
   // Loads a subreddit's feed. Guarded against races: if the user submits a
-  // new subreddit while an older fetch is still in flight, the older
-  // request's result (success or failure) is discarded when it lands.
-  async function loadSubreddit(sub) {
+  // new subreddit while an older attempt is still in flight or retrying,
+  // the older attempt's result is discarded when it lands.
+  //
+  // There is no offline sample data: a failed fetch (direct + every proxy)
+  // is not a dead end, it's a reason to keep trying. The app retries
+  // automatically with exponential backoff — visibly, with a live status
+  // and a manual "Retry Now" button — until a real Reddit response comes
+  // back, live data always wins over nothing.
+  function loadSubreddit(sub) {
     subreddit = sub;
     stopAutoplay();
+    clearTimeout(retryTimer);
 
     loadToken += 1;
-    const myToken = loadToken;
-    if (activeAbortController) activeAbortController.abort();
-    const controller = new AbortController();
-    activeAbortController = controller;
+    retryAttempt = 0;
+    retryDelayMs = INITIAL_RETRY_MS;
 
-    setStatus("loading", "Connecting to r/" + sub + "…");
-    els.postTitle.textContent = "Loading feed…";
-    els.postMeta.textContent = "r/" + sub + " · loading…";
-    els.postStats.textContent = "";
-
-    let fetched;
-    let live = true;
-    try {
-      fetched = await fetchDirect(sub, controller.signal);
-    } catch (directErr) {
-      try {
-        fetched = await fetchViaProxies(sub, controller.signal);
-      } catch (proxyErr) {
-        console.warn("[FlyBrain] all live fetch attempts failed, using offline sample:", proxyErr);
-        fetched = OFFLINE_POSTS.slice();
-        live = false;
-      }
-    }
-
-    if (myToken !== loadToken) return; // a newer request superseded this one
-
-    posts = fetched;
-    setStatus(
-      live ? "live" : "offline",
-      live ? "LIVE · r/" + sub : "OFFLINE SAMPLE · live fetch failed"
-    );
-
+    posts = [];
     index = 0;
     tags = [];
     renderTagStrip();
     renderLog();
     updateSidebar();
-    showPost();
+
+    attemptFetch(sub, loadToken);
+  }
+
+  async function attemptFetch(sub, myToken) {
+    if (myToken !== loadToken) return; // superseded by a newer request
+
+    if (activeAbortController) activeAbortController.abort();
+    const controller = new AbortController();
+    activeAbortController = controller;
+
+    retryAttempt += 1;
+    const attemptLabel =
+      retryAttempt === 1 ? "" : " (retry " + (retryAttempt - 1) + ")";
+    setStatus("loading", "Connecting to r/" + sub + attemptLabel + "…");
+    if (retryAttempt === 1) {
+      els.postTitle.textContent = "Loading feed…";
+      els.postMeta.textContent = "r/" + sub + " · loading…";
+      els.postStats.textContent = "";
+    }
+
+    let fetched;
+    let lastErr;
+    try {
+      fetched = await fetchDirect(sub, controller.signal);
+    } catch (directErr) {
+      lastErr = directErr;
+      try {
+        fetched = await fetchViaProxies(sub, controller.signal);
+        lastErr = null;
+      } catch (proxyErr) {
+        lastErr = proxyErr;
+      }
+    }
+
+    if (myToken !== loadToken) return; // superseded while this was in flight
+
+    if (fetched) {
+      posts = fetched;
+      retryAttempt = 0;
+      retryDelayMs = INITIAL_RETRY_MS;
+      setStatus("live", "LIVE · r/" + sub);
+      index = 0;
+      tags = [];
+      renderTagStrip();
+      renderLog();
+      updateSidebar();
+      showPost();
+      return;
+    }
+
+    const reason = describeError(lastErr);
+    const waitSec = Math.round(retryDelayMs / 1000);
+    console.warn(
+      "[FlyBrain] live fetch attempt " + retryAttempt + " failed (" + reason + "), retrying in " + waitSec + "s"
+    );
+    setStatus(
+      "offline",
+      "RETRYING · " + reason + " · next try in " + waitSec + "s"
+    );
+    els.postTitle.textContent = "Waiting for live Reddit data…";
+    els.postMeta.textContent = "r/" + sub + " · fetch failed: " + reason;
+    els.postStats.textContent =
+      "Attempt " + retryAttempt + " · retrying automatically, or use Retry Now.";
+
+    retryTimer = setTimeout(() => {
+      retryDelayMs = Math.min(retryDelayMs * 2, MAX_RETRY_MS);
+      attemptFetch(sub, myToken);
+    }, retryDelayMs);
+  }
+
+  function retryNow() {
+    clearTimeout(retryTimer);
+    retryDelayMs = INITIAL_RETRY_MS;
+    attemptFetch(subreddit, loadToken);
   }
 
   function showPost() {
@@ -677,6 +747,7 @@
     loadSubreddit(value);
   });
 
+  els.retryBtn.addEventListener("click", retryNow);
   els.nextBtn.addEventListener("click", tagAndAdvance);
   els.prevBtn.addEventListener("click", goPrev);
   els.autoplayBtn.addEventListener("click", () => {
