@@ -113,14 +113,25 @@ body {
 
 /* ---------- Layout ---------- */
 
-.main-grid {
+.app-main {
   display: grid;
   grid-template-columns: 1fr 320px;
+  grid-template-areas:
+    "scene   sidebar"
+    "senses  senses"
+    "log     log"
+    "summary summary";
   gap: 18px;
   align-items: start;
 }
 
-.scene-panel, .sidebar {
+.scene-panel { grid-area: scene; }
+.sidebar { grid-area: sidebar; }
+.senses-row { grid-area: senses; display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.log-panel { grid-area: log; }
+.summary-panel { grid-area: summary; }
+
+.scene-panel, .sidebar, .sense-col, .log-panel, .summary-panel {
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 14px;
@@ -381,15 +392,191 @@ body {
   margin: 0;
 }
 
+/* ---------- Currently Sensing (live readout) ---------- */
+
+.live-readout { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; }
+.live-pill {
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+.live-pill.emo-elated, .live-pill.emo-content { border-color: var(--green); color: var(--green); }
+.live-pill.emo-alarmed { border-color: var(--red); color: var(--red); }
+.live-pill.emo-bored { border-color: var(--text-dim); color: var(--text-dim); }
+.live-pill.stress-high { border-color: var(--red); color: var(--red); }
+.live-pill.stress-moderate { border-color: var(--orange); color: var(--orange); }
+.live-pill.stress-low { border-color: var(--blue); color: var(--blue); }
+.live-pill.feel-positive { border-color: var(--green); color: var(--green); }
+.live-pill.feel-negative { border-color: var(--red); color: var(--red); }
+.live-pill.feel-neutral { border-color: var(--text-dim); color: var(--text-dim); }
+
+/* ---------- Senses row ---------- */
+
+.sense-col h3 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.sense-col h3 em {
+  font-style: normal;
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.sense-readout {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--blue);
+  min-height: 28px;
+  margin: 0 0 10px;
+  line-height: 1.4;
+}
+
+/* Vision: compound-eye mosaic */
+.compound-eye {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 3px;
+}
+.eye-cell {
+  position: relative;
+  height: 26px;
+  overflow: hidden;
+  border-radius: 40%;
+  background: color-mix(in srgb, var(--tint, var(--blue)) 25%, #0a0e16);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.eye-cell span {
+  position: absolute;
+  top: 50%;
+  left: 4px;
+  transform: translateY(-50%);
+  white-space: nowrap;
+  font-family: var(--mono);
+  font-size: 8px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* Hearing: oscilloscope canvas */
+#hearing-canvas {
+  width: 100%;
+  height: 90px;
+  background: #05070b;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+/* Smell: rising particle plume */
+.plume {
+  position: relative;
+  height: 110px;
+  overflow: hidden;
+  background: #05070b;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.plume-particle {
+  position: absolute;
+  bottom: -8px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  animation: rise linear infinite;
+}
+.plume-particle.sweet { background: var(--green); box-shadow: 0 0 6px var(--green); }
+.plume-particle.geosmin { background: var(--orange); box-shadow: 0 0 6px var(--orange); }
+
+@keyframes rise {
+  0% { transform: translateY(0) scale(0.6); opacity: 0; }
+  15% { opacity: 0.9; }
+  100% { transform: translateY(-110px) scale(1.1); opacity: 0; }
+}
+
+/* ---------- Scan log ---------- */
+
+.log-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 420px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.log-empty { font-family: var(--mono); font-size: 12px; color: var(--text-dim); margin: 0; }
+
+.log-row {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--text-dim);
+  border-radius: 10px;
+  padding: 10px 12px;
+  animation: chip-in 0.3s ease;
+}
+.log-row.motor-approach { border-left-color: var(--green); }
+.log-row.motor-evade { border-left-color: var(--red); }
+.log-row.motor-groom { border-left-color: var(--blue); }
+.log-row.motor-forage { border-left-color: var(--yellow); }
+
+.log-row-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.log-row-title {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+.log-row-motor {
+  flex: none;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.log-row-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.log-tag {
+  font-family: var(--mono);
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+}
+.log-tag.tag-emotion { color: var(--yellow); }
+.log-tag.tag-feeling.pos { color: var(--green); }
+.log-tag.tag-feeling.neg { color: var(--red); }
+.log-tag.tag-stress { color: var(--orange); }
+.log-tag.tag-senses { color: var(--blue); }
+
+/* ---------- Field report summary ---------- */
+
+.summary-panel .vibe-summary {
+  font-size: 13.5px;
+}
+
 /* ---------- Responsive ---------- */
 
 @media (max-width: 960px) {
-  .main-grid { grid-template-columns: 1fr; }
+  .app-main { grid-template-columns: 1fr; grid-template-areas: "scene" "sidebar" "senses" "log" "summary"; }
+  .senses-row { grid-template-columns: 1fr; }
   .scene { flex-direction: column; height: auto; padding: 20px 0; gap: 24px; }
   .sub-form { margin-left: 0; }
   .app-header { justify-content: center; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .fly, .fly-wing-l, .fly-wing-r { animation: none !important; }
+  .fly, .fly-wing-l, .fly-wing-r, .plume-particle { animation: none !important; }
 }
