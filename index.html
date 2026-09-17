@@ -1,79 +1,129 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#0b0a09">
-  <title>Fly Piano</title>
-  <meta name="description" content="A simulated fly performs real piano pieces in rhythm while its live brain-sim state drives a full stats dashboard.">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0b0f14">
+<title>Fruit Fly Connectome Reddit Simulator</title>
+<meta name="description" content="A simplified simulated fruit fly brain reads live Reddit posts and computes its own antennal-lobe, mushroom-body, and neuromodulator reactions.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <main class="stage">
-    <header class="top">
-      <div class="title"><h1>FLY PIANO</h1><p>the fly performs real pieces — its brain sim drives the stats, not the notes</p></div>
-      <div class="top-meta"><span id="clock">00:00</span><span id="backend-badge">CONNECTOME LIF</span></div>
-    </header>
+<div class="app">
 
-    <section class="now-playing">
-      <div class="now-playing-info">
-        <span class="eyebrow">NOW PERFORMING</span>
-        <h2 id="track-title">Ode to Joy <em>— Beethoven</em></h2>
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-emoji" aria-hidden="true">🪰</span>
+      <div class="brand-text">
+        <h1>Fruit Fly Connectome</h1>
+        <p>Reddit Simulator</p>
       </div>
-      <label class="song-picker">SONG <select id="song-picker" aria-label="Choose a piece"></select></label>
-    </section>
+    </div>
 
-    <section class="keyboard-card" aria-label="Piano performed by the simulated fly">
-      <div class="keyboard">
-        <div class="performer" id="performer"><i></i></div>
-        <div class="keys" id="keys"></div>
-      </div>
-      <div class="progress"><div class="progress-fill" id="progress-fill"></div></div>
-    </section>
+    <form id="sub-form" class="sub-form" role="search">
+      <label for="sub-input" class="sr-only">Subreddit name</label>
+      <span class="sub-prefix">r/</span>
+      <input id="sub-input" name="subreddit" type="text" value="popular"
+             autocomplete="off" spellcheck="false" maxlength="24"
+             aria-label="Subreddit name">
+      <button type="submit">Scan</button>
+    </form>
 
-    <section class="transport">
-      <button id="play-track" class="play" type="button" aria-label="Start the fly's performance">▶</button>
-      <p id="status-text">press play — the fly will perform this piece exactly, in rhythm</p>
-      <span class="tempo" id="tempo-value">— BPM</span>
-    </section>
+    <div class="status" id="status-indicator" role="status" aria-live="polite">
+      <span class="status-dot loading" id="status-dot"></span>
+      <span id="status-text">Connecting…</span>
+    </div>
+  </header>
 
-    <section class="panel panel-hero">
-      <div class="panel-head"><h2>Activity</h2><b id="dopamine-value">—</b></div>
-      <canvas id="wave" width="900" height="120"></canvas>
-    </section>
+  <main class="main-grid">
 
-    <section class="panels">
-      <div class="panel">
-        <div class="panel-head"><h2>Neurons</h2><b id="neuron-value">— / —</b></div>
-        <canvas id="neural" width="300" height="90"></canvas>
-      </div>
-      <div class="panel">
-        <div class="panel-head"><h2>Hormones</h2></div>
-        <div class="receptor-rows">
-          <div class="receptor-row"><small>DOPAMINE</small><div class="dots" id="dots-da"></div></div>
-          <div class="receptor-row"><small>SEROTONIN</small><div class="dots" id="dots-5ht"></div></div>
-          <div class="receptor-row"><small>OCTOPAMINE</small><div class="dots" id="dots-oa"></div></div>
+    <section class="scene-panel" aria-label="Simulated fruit fly observing a Reddit feed on a smartphone">
+      <div class="scene" id="scene">
+        <div class="fly" id="fly">
+          <div class="fly-wing fly-wing-l"></div>
+          <div class="fly-wing fly-wing-r"></div>
+          <div class="fly-leg leg-l1"></div>
+          <div class="fly-leg leg-l2"></div>
+          <div class="fly-leg leg-r1"></div>
+          <div class="fly-leg leg-r2"></div>
+          <div class="fly-body">
+            <div class="fly-eye fly-eye-l"></div>
+            <div class="fly-eye fly-eye-r"></div>
+          </div>
+        </div>
+
+        <div class="phone" id="phone">
+          <div class="phone-notch"></div>
+          <div class="phone-screen">
+            <p class="post-meta" id="post-meta">r/popular · loading…</p>
+            <h2 class="post-title" id="post-title">Loading feed…</h2>
+            <p class="post-stats" id="post-stats"></p>
+          </div>
         </div>
       </div>
-      <div class="panel panel-emotion">
-        <div class="panel-head"><h2>Emotion</h2></div>
-        <div class="emotion-ring" id="emotion-ring"><b id="emotion-value">—</b></div>
+
+      <div class="tag-strip" id="tag-strip" aria-label="Computed brain reaction tags for scanned posts">
+        <p class="tag-strip-empty" id="tag-strip-empty">Swipe to Next — the fly's reactions will tag here.</p>
+      </div>
+
+      <div class="scene-controls">
+        <button id="prev-btn" type="button" aria-label="Go back to previous post">⟨ Prev</button>
+        <button id="autoplay-btn" type="button" aria-pressed="false">▶ Auto-Swipe</button>
+        <button id="next-btn" type="button">Next ⟩</button>
+        <span class="post-counter" id="post-counter">0 / 0</span>
       </div>
     </section>
 
-    <section class="panel">
-      <div class="panel-head"><h2>Drives</h2></div>
-      <div class="drive-rows" id="drive-rows">
-        <div class="drive-row"><small>FORAGE</small><div class="bar"><i id="drive-foraging"></i></div></div>
-        <div class="drive-row"><small>ESCAPE</small><div class="bar"><i id="drive-escape"></i></div></div>
-        <div class="drive-row"><small>EXPLORE</small><div class="bar"><i id="drive-explore"></i></div></div>
-        <div class="drive-row"><small>REST</small><div class="bar"><i id="drive-rest"></i></div></div>
+    <aside class="sidebar" aria-label="Fly brain vitals and subreddit vibe summary">
+      <h2 class="sidebar-title">Vitals</h2>
+
+      <div class="gauge">
+        <div class="gauge-label"><span>Dopamine</span><b id="val-dopamine">—</b></div>
+        <div class="gauge-track"><div class="gauge-fill fill-dopamine" id="fill-dopamine"></div></div>
       </div>
-    </section>
+      <div class="gauge">
+        <div class="gauge-label"><span>Serotonin</span><b id="val-serotonin">—</b></div>
+        <div class="gauge-track"><div class="gauge-fill fill-serotonin" id="fill-serotonin"></div></div>
+      </div>
+      <div class="gauge">
+        <div class="gauge-label"><span>Octopamine</span><b id="val-octopamine">—</b></div>
+        <div class="gauge-track"><div class="gauge-fill fill-octopamine" id="fill-octopamine"></div></div>
+      </div>
+      <div class="gauge">
+        <div class="gauge-label"><span>Tyramine</span><b id="val-tyramine">—</b></div>
+        <div class="gauge-track"><div class="gauge-fill fill-tyramine" id="fill-tyramine"></div></div>
+      </div>
+
+      <div class="state-readout">
+        <span class="label">Behavioral State</span>
+        <strong id="state-value">—</strong>
+      </div>
+
+      <div class="mini-stats">
+        <div class="mini-stat">
+          <span class="label">Mean Spike Freq</span>
+          <strong id="mean-freq">— Hz</strong>
+        </div>
+        <div class="mini-stat">
+          <span class="label">Mean Valence</span>
+          <strong id="mean-valence">—</strong>
+        </div>
+      </div>
+
+      <h2 class="sidebar-title">Subreddit Vibe</h2>
+      <p class="vibe-summary" id="vibe-summary" aria-live="polite">
+        Scan a subreddit and swipe through posts to generate a vibe summary…
+      </p>
+    </aside>
+
   </main>
-  <script src="Connectome.js"></script><script src="FlyNeuralEngine.js"></script><script src="FullBrainBridge.js"></script><script src="main.js"></script>
+</div>
+
+<script src="offline-data.js"></script>
+<script src="brain.js"></script>
+<script src="app.js"></script>
 </body>
 </html>
