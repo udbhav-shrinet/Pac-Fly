@@ -20,38 +20,34 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Try www.reddit.com and old.reddit.com with realistic browser headers
-        run: |
-          set +e
-          for HOST in "www.reddit.com" "old.reddit.com"; do
-            URL="https://${HOST}/r/${TEST_SUBREDDIT}/hot.json?limit=15&raw_json=1"
-            echo "=== Fetching: $URL ==="
-            HTTP_STATUS=$(curl -sS -L \
-              -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" \
-              -H "Accept: application/json, text/plain, */*" \
-              -H "Accept-Language: en-US,en;q=0.9" \
-              -H "Accept-Encoding: gzip, deflate, br" \
-              -H "Connection: keep-alive" \
-              -H "Sec-Fetch-Mode: cors" \
-              --compressed \
-              -o "/tmp/reddit_${HOST}.json" -w "%{http_code}" "$URL")
-            echo "HTTP status: $HTTP_STATUS"
-            echo "First 200 chars:"
-            head -c 200 "/tmp/reddit_${HOST}.json"
-            echo ""
-            echo ""
-          done
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
 
-          # Use whichever host actually returned real JSON, preferring www.
-          for HOST in "www.reddit.com" "old.reddit.com"; do
-            if node -e "const d=require('/tmp/reddit_${HOST}.json'); process.exit((d.data && d.data.children && d.data.children.length) ? 0 : 1)" 2>/dev/null; then
-              echo "WORKING_HOST=$HOST" >> "$GITHUB_ENV"
-              cp "/tmp/reddit_${HOST}.json" /tmp/reddit.json
-              echo "=== $HOST returned real data, using it ==="
-              break
-            fi
-          done
-          set -e
+      - name: Install Playwright + Chromium
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.48 >/dev/null 2>&1
+          npx playwright install --with-deps chromium
+
+      - name: Fetch real Reddit data using an actual browser (curl's TLS fingerprint fails bot checks; a real browser's doesn't)
+        run: |
+          node -e "
+            const { chromium } = require('playwright');
+            (async () => {
+              const browser = await chromium.launch();
+              const page = await browser.newPage();
+              const url = 'https://www.reddit.com/r/' + process.env.TEST_SUBREDDIT + '/hot.json?limit=15&raw_json=1';
+              console.log('Navigating to: ' + url);
+              const res = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+              console.log('HTTP status: ' + res.status());
+              const text = await page.evaluate(() => document.body.innerText);
+              require('fs').writeFileSync('/tmp/reddit.json', text);
+              console.log('First 300 chars:');
+              console.log(text.slice(0, 300));
+              await browser.close();
+            })().catch(e => { console.error('ERROR:', e.message); process.exit(1); });
+          "
           echo "---"
           node -e "
             const data = require('/tmp/reddit.json');
