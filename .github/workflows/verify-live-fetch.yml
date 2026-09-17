@@ -10,9 +10,19 @@ on:
         description: "Subreddit to fetch"
         required: false
         default: "popular"
+      client_id:
+        description: "Reddit app client id (passed at dispatch time only, never stored in the workflow file)"
+        required: false
+        default: ""
+      client_secret:
+        description: "Reddit app client secret (passed at dispatch time only, never stored in the workflow file)"
+        required: false
+        default: ""
 
 env:
   TEST_SUBREDDIT: ${{ inputs.subreddit || 'popular' }}
+  REDDIT_CLIENT_ID: ${{ inputs.client_id }}
+  REDDIT_CLIENT_SECRET: ${{ inputs.client_secret }}
 
 jobs:
   verify:
@@ -42,6 +52,38 @@ jobs:
             -d "grant_type=client_credentials"
           echo "---"
           cat /tmp/oauth_test.txt
+          set -e
+
+      - name: Full OAuth-authenticated fetch of oauth.reddit.com using real credentials
+        run: |
+          set +e
+          if [ -z "$REDDIT_CLIENT_ID" ] || [ -z "$REDDIT_CLIENT_SECRET" ]; then
+            echo "No client_id/client_secret supplied at dispatch time — skipping authenticated fetch test."
+            exit 0
+          fi
+          echo "Step A: obtain a real access token"
+          curl -sS -o /tmp/token.json -w "\nHTTP_STATUS:%{http_code}\n" \
+            -X POST "https://www.reddit.com/api/v1/access_token" \
+            -A "fruit-fly-connectome-reddit-simulator/1.0 by u/fruit-fly-sim" \
+            -u "${REDDIT_CLIENT_ID}:${REDDIT_CLIENT_SECRET}" \
+            -d "grant_type=client_credentials"
+          echo "---token response---"
+          cat /tmp/token.json
+          echo ""
+          ACCESS_TOKEN=$(node -e "try{const t=require('/tmp/token.json');console.log(t.access_token||'')}catch(e){console.log('')}")
+          if [ -z "$ACCESS_TOKEN" ]; then
+            echo "NO ACCESS TOKEN OBTAINED — cannot attempt authenticated fetch."
+            set -e
+            exit 0
+          fi
+          echo "Got access token (length ${#ACCESS_TOKEN}). Step B: fetch via oauth.reddit.com"
+          curl -sS -o /tmp/reddit_oauth.json -w "\nHTTP_STATUS:%{http_code}\n" \
+            "https://oauth.reddit.com/r/${TEST_SUBREDDIT}/hot?limit=15&raw_json=1" \
+            -A "fruit-fly-connectome-reddit-simulator/1.0 by u/fruit-fly-sim" \
+            -H "Authorization: bearer ${ACCESS_TOKEN}"
+          echo "---oauth fetch response (first 400 chars)---"
+          head -c 400 /tmp/reddit_oauth.json
+          echo ""
           set -e
 
       - name: Fetch real Reddit data using an actual browser (curl's TLS fingerprint fails bot checks; a real browser's doesn't)
@@ -79,11 +121,34 @@ jobs:
           node -e "
             global.window = global;
             require('./brain.js');
-            const data = require('/tmp/reddit.json');
-            const children = data.data.children;
-            console.log('Running FlyBrain.analyzePost() on ' + children.length + ' real posts from r/${TEST_SUBREDDIT}:');
+            const fs = require('fs');
+
+            function tryLoad(path) {
+              if (!fs.existsSync(path)) return null;
+              try {
+                const data = JSON.parse(fs.readFileSync(path, 'utf8'));
+                const children = (data && data.data && data.data.children) || [];
+                return children.length ? { data, children } : null;
+              } catch (e) {
+                return null;
+              }
+            }
+
+            const oauthResult = tryLoad('/tmp/reddit_oauth.json');
+            const browserResult = tryLoad('/tmp/reddit.json');
+            const picked = oauthResult ? { source: 'oauth.reddit.com (authenticated)', ...oauthResult }
+              : browserResult ? { source: 'www.reddit.com (unauthenticated browser)', ...browserResult }
+              : null;
+
+            if (!picked) {
+              console.log('NO REAL DATA AVAILABLE from either fetch path — both blocked or empty.');
+              process.exit(1);
+            }
+
+            console.log('Data source that actually worked: ' + picked.source);
+            console.log('Running FlyBrain.analyzePost() on ' + picked.children.length + ' real posts from r/${TEST_SUBREDDIT}:');
             console.log('');
-            children.forEach((c, i) => {
+            picked.children.forEach((c, i) => {
               const post = {
                 title: c.data.title,
                 score: c.data.score,
@@ -96,5 +161,5 @@ jobs:
               console.log('   valence=' + brain.valence.toFixed(2) + ' spikeFreq=' + Math.round(brain.spikeFreq) + 'Hz channel=' + brain.dominantChannel + ' motor=' + brain.motorLabel);
             });
             console.log('');
-            console.log('SUCCESS: fly brain analysed ' + children.length + ' real, live r/${TEST_SUBREDDIT} posts end-to-end.');
+            console.log('SUCCESS: fly brain analysed ' + picked.children.length + ' real, live r/${TEST_SUBREDDIT} posts end-to-end via ' + picked.source + '.');
           "
