@@ -26,8 +26,16 @@ jobs:
           URL="https://www.reddit.com/r/${TEST_SUBREDDIT}/hot.json?limit=15&raw_json=1"
           echo "Fetching: $URL"
           echo "---"
-          HTTP_STATUS=$(curl -sS -A "fruit-fly-connectome-reddit-simulator/1.0" -o /tmp/reddit.json -w "%{http_code}" "$URL")
+          HTTP_STATUS=$(curl -sS -L \
+            -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" \
+            -H "Accept: application/json" \
+            -H "Accept-Language: en-US,en;q=0.9" \
+            -o /tmp/reddit.json -w "%{http_code}" "$URL")
           echo "HTTP status: $HTTP_STATUS"
+          echo "---"
+          echo "First 300 chars of response:"
+          head -c 300 /tmp/reddit.json
+          echo ""
           echo "---"
           node -e "
             const data = require('/tmp/reddit.json');
