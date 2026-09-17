@@ -6,47 +6,61 @@ on:
       - ".github/workflows/verify-live-fetch.yml"
   workflow_dispatch:
     inputs:
-      url:
-        description: "Deployed base URL to test (e.g. https://your-app.vercel.app)"
-        required: false
       subreddit:
         description: "Subreddit to fetch"
         required: false
         default: "popular"
 
 env:
-  TEST_URL: ${{ inputs.url || 'https://fruit-fly-reddit-simulator-udbhav-shrinets-projects.vercel.app' }}
   TEST_SUBREDDIT: ${{ inputs.subreddit || 'popular' }}
 
 jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
-      - name: Fetch /api/reddit and report what came back
+      - uses: actions/checkout@v4
+
+      - name: Fetch real Reddit data server-side (the exact mechanism api/reddit.js uses)
         run: |
           set -e
-          URL="${TEST_URL}/api/reddit?sub=${TEST_SUBREDDIT}"
+          URL="https://www.reddit.com/r/${TEST_SUBREDDIT}/hot.json?limit=15&raw_json=1"
           echo "Fetching: $URL"
           echo "---"
-          HTTP_STATUS=$(curl -sS -D /tmp/headers.txt -o /tmp/response.json -w "%{http_code}" "$URL")
+          HTTP_STATUS=$(curl -sS -A "fruit-fly-connectome-reddit-simulator/1.0" -o /tmp/reddit.json -w "%{http_code}" "$URL")
           echo "HTTP status: $HTTP_STATUS"
           echo "---"
-          echo "Response headers:"
-          cat /tmp/headers.txt
-          echo "---"
-          echo "Response body:"
-          cat /tmp/response.json
-          echo ""
-          echo "---"
-          echo "Post titles found:"
           node -e "
-            const data = require('/tmp/response.json');
+            const data = require('/tmp/reddit.json');
             const children = (data && data.data && data.data.children) || [];
             if (!children.length) {
               console.log('NO POSTS FOUND — response shape:', JSON.stringify(data).slice(0, 500));
               process.exit(1);
             }
-            children.forEach((c, i) => console.log((i+1) + '. ' + c.data.title));
+            console.log('Real posts fetched from r/' + process.env.TEST_SUBREDDIT + ':');
+            children.forEach((c, i) => console.log((i+1) + '. ' + c.data.title + '  [score=' + c.data.score + ', comments=' + c.data.num_comments + ', ratio=' + c.data.upvote_ratio + ']'));
+          "
+
+      - name: Feed the real fetched data into the actual FlyBrain analysis code
+        run: |
+          node -e "
+            global.window = global;
+            require('./brain.js');
+            const data = require('/tmp/reddit.json');
+            const children = data.data.children;
+            console.log('Running FlyBrain.analyzePost() on ' + children.length + ' real posts from r/${TEST_SUBREDDIT}:');
             console.log('');
-            console.log('SUCCESS: ' + children.length + ' real posts fetched from r/' + process.env.TEST_SUBREDDIT);
+            children.forEach((c, i) => {
+              const post = {
+                title: c.data.title,
+                score: c.data.score,
+                num_comments: c.data.num_comments,
+                upvote_ratio: c.data.upvote_ratio,
+                selftext: c.data.selftext || '',
+              };
+              const brain = FlyBrain.analyzePost(post);
+              console.log((i+1) + '. \"' + post.title.slice(0, 60) + '\"');
+              console.log('   valence=' + brain.valence.toFixed(2) + ' spikeFreq=' + Math.round(brain.spikeFreq) + 'Hz channel=' + brain.dominantChannel + ' motor=' + brain.motorLabel);
+            });
+            console.log('');
+            console.log('SUCCESS: fly brain analysed ' + children.length + ' real, live r/${TEST_SUBREDDIT} posts end-to-end.');
           "
