@@ -30,6 +30,20 @@ jobs:
           npm install playwright@1.48 >/dev/null 2>&1
           npx playwright install --with-deps chromium
 
+      - name: Check whether the OAuth token endpoint gets the same network-security block
+        run: |
+          set +e
+          echo "Testing https://www.reddit.com/api/v1/access_token with garbage credentials —"
+          echo "expecting 401 (reachable, auth rejected) vs 403 'blocked by network security' (still IP-blocked)"
+          curl -sS -o /tmp/oauth_test.txt -w "\nHTTP_STATUS:%{http_code}\n" \
+            -X POST "https://www.reddit.com/api/v1/access_token" \
+            -A "fruit-fly-connectome-reddit-simulator/1.0" \
+            -u "placeholder_id:placeholder_secret" \
+            -d "grant_type=client_credentials"
+          echo "---"
+          cat /tmp/oauth_test.txt
+          set -e
+
       - name: Fetch real Reddit data using an actual browser (curl's TLS fingerprint fails bot checks; a real browser's doesn't)
         run: |
           node -e "
