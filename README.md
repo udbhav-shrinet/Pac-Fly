@@ -2,29 +2,38 @@
 
 A single-page, dark-mode web app where a simplified simulated fruit fly
 brain reads live Reddit posts and computes its own reactions. It's a real,
-functioning app, not a mockup: plain HTML/CSS/JS, no build step, no API
-keys, no paid services.
+functioning app, not a mockup: plain HTML/CSS/JS front end, no API keys,
+no paid services, and one tiny serverless function.
 
 ## How it works
 
-The app fetches `https://www.reddit.com/r/{subreddit}/hot.json` directly
-from the browser — Reddit's public, unauthenticated, read-only JSON
-endpoint. Reddit doesn't always send a CORS header that allows that direct
-browser fetch, so if it's blocked (or the request otherwise fails), the app
-retries through a short chain of free public CORS-passthrough proxies
+The primary fetch path is a same-origin serverless function,
+[`api/reddit.js`](api/reddit.js), that fetches
+`https://www.reddit.com/r/{subreddit}/hot.json` — Reddit's public,
+unauthenticated, read-only JSON endpoint — **server-side**. CORS is a
+browser-only restriction, so a server fetching Reddit directly is never
+blocked by it; this is what makes live data reliable. The front end calls
+`/api/reddit?sub={subreddit}` at its own origin, no CORS involved at all.
+
+That function only runs where it's deployed (see **Deploy**, below). When
+it isn't present — running the front end off a plain static file server,
+or opening `index.html` directly — that call 404s immediately and the app
+falls straight through to a browser-side fallback chain: a direct fetch to
+Reddit (works only if Reddit happens to send a permissive CORS header),
+then a short chain of free public CORS-passthrough proxies
 (`api.allorigins.win`, `corsproxy.io`, `api.codetabs.com` — no keys, no
 cost), since any single public proxy can be down or rate-limited on its
 own.
 
 There is no offline sample data and no canned fallback content — this is a
-live-data-only app. If direct fetch and every proxy fail, the app does not
-go dead: it shows **RETRYING** with the actual failure reason (e.g.
-"network/CORS blocked", an HTTP status, or "timed out") and automatically
-retries with exponential backoff (3s, 6s, 12s, up to a 30s cap) until a
-real Reddit response comes back — live data always wins over nothing. A
-**Retry Now** button next to the status indicator forces an immediate
-attempt instead of waiting out the backoff. Once a fetch succeeds, the
-status switches to **LIVE**.
+live-data-only app. If every attempt fails, the app does not go dead: it
+shows **RETRYING** with the actual failure reason (e.g. "network/CORS
+blocked", an HTTP status, or "timed out") and automatically retries with
+exponential backoff (3s, 6s, 12s, up to a 30s cap) until a real Reddit
+response comes back — live data always wins over nothing. A **Retry Now**
+button next to the status indicator forces an immediate attempt instead of
+waiting out the backoff. Once a fetch succeeds, the status switches to
+**LIVE**.
 
 Every post runs through the same brain pipeline (`brain.js`), driven
 entirely by the post's real stats (title length,
@@ -79,13 +88,23 @@ arousal keyword lexicon). Nothing is hardcoded per post:
 
 ## Run
 
-Any static file server works, e.g.:
+For the front end alone (no reliable live fetch, since `/api/reddit`
+won't exist — it'll fall through to the browser-side chain):
 
 ```bash
 python3 -m http.server 8000
 ```
 
-Open `http://localhost:8000`. No build step, no dependencies to install.
+Open `http://localhost:8000`.
+
+## Deploy
+
+For live fetch to actually work reliably, deploy to
+[Vercel](https://vercel.com) (free Hobby tier covers this): import this
+repository as a new project. Vercel auto-detects the `api/` directory as
+a serverless function with zero configuration — no build step, no
+framework, nothing to set up. Every push to the deployed branch updates
+both the static site and the function together.
 
 ## Files
 
@@ -93,3 +112,5 @@ Open `http://localhost:8000`. No build step, no dependencies to install.
 - `styles.css` — dark-slate theme, 3D scene, gauges, tag chips.
 - `brain.js` — the simulated fruit fly brain (pure functions, no DOM).
 - `app.js` — Reddit fetch/retry, feed navigation, sidebar rendering.
+- `api/reddit.js` — the serverless function that fetches Reddit
+  server-side, sidestepping CORS entirely.
