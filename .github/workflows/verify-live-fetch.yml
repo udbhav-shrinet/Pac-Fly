@@ -28,8 +28,11 @@ jobs:
           URL="${TEST_URL}/api/reddit?sub=${TEST_SUBREDDIT}"
           echo "Fetching: $URL"
           echo "---"
-          HTTP_STATUS=$(curl -sS -o /tmp/response.json -w "%{http_code}" "$URL")
+          HTTP_STATUS=$(curl -sS -D /tmp/headers.txt -o /tmp/response.json -w "%{http_code}" "$URL")
           echo "HTTP status: $HTTP_STATUS"
+          echo "---"
+          echo "Response headers:"
+          cat /tmp/headers.txt
           echo "---"
           echo "Response body:"
           cat /tmp/response.json
