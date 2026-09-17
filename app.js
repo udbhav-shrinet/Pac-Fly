@@ -92,21 +92,42 @@
   // browser. This works when Reddit's response includes a permissive CORS
   // header for the requesting origin; it does not always.
   async function fetchDirect(sub, outerSignal) {
-    const res = await fetchWithTimeout(redditUrl(sub), outerSignal, 6000);
-    if (!res.ok) throw new Error("HTTP " + res.status);
-    return parseRedditJson(await res.json());
+    try {
+      const res = await fetchWithTimeout(redditUrl(sub), outerSignal, 5000);
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      return parseRedditJson(await res.json());
+    } catch (err) {
+      console.warn("[FlyBrain] direct Reddit fetch failed:", err);
+      throw err;
+    }
   }
 
-  // Attempt 2: the same public, unauthenticated Reddit endpoint, relayed
-  // through a free public CORS-passthrough proxy (no key, no cost) for
-  // browsers that Reddit's own CORS policy blocks directly.
-  async function fetchViaProxy(sub, outerSignal) {
-    const proxied =
-      "https://api.allorigins.win/raw?url=" +
-      encodeURIComponent(redditUrl(sub));
-    const res = await fetchWithTimeout(proxied, outerSignal, 8000);
-    if (!res.ok) throw new Error("proxy HTTP " + res.status);
-    return parseRedditJson(await res.json());
+  // Attempt 2+: the same public, unauthenticated Reddit endpoint, relayed
+  // through free public CORS-passthrough proxies (no key, no cost) for
+  // browsers that Reddit's own CORS policy blocks directly. Any single
+  // public proxy can be down or rate-limited on its own, so several
+  // independent ones are tried in sequence before giving up.
+  const PROXY_URL_BUILDERS = [
+    (target) => "https://api.allorigins.win/raw?url=" + encodeURIComponent(target),
+    (target) => "https://corsproxy.io/?url=" + encodeURIComponent(target),
+    (target) => "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(target),
+  ];
+
+  async function fetchViaProxies(sub, outerSignal) {
+    const target = redditUrl(sub);
+    let lastErr = new Error("no proxy attempted");
+    for (const buildUrl of PROXY_URL_BUILDERS) {
+      const proxyUrl = buildUrl(target);
+      try {
+        const res = await fetchWithTimeout(proxyUrl, outerSignal, 6000);
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        return parseRedditJson(await res.json());
+      } catch (err) {
+        console.warn("[FlyBrain] proxy fetch failed (" + proxyUrl + "):", err);
+        lastErr = err;
+      }
+    }
+    throw lastErr;
   }
 
   function setStatus(mode, text) {
@@ -138,8 +159,9 @@
       fetched = await fetchDirect(sub, controller.signal);
     } catch (directErr) {
       try {
-        fetched = await fetchViaProxy(sub, controller.signal);
+        fetched = await fetchViaProxies(sub, controller.signal);
       } catch (proxyErr) {
+        console.warn("[FlyBrain] all live fetch attempts failed, using offline sample:", proxyErr);
         fetched = OFFLINE_POSTS.slice();
         live = false;
       }

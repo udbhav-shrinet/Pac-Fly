@@ -11,10 +11,12 @@ The app fetches `https://www.reddit.com/r/{subreddit}/hot.json` directly
 from the browser — Reddit's public, unauthenticated, read-only JSON
 endpoint. Reddit doesn't always send a CORS header that allows that direct
 browser fetch, so if it's blocked (or the request otherwise fails), the app
-retries once through a free public CORS-passthrough proxy
-(`api.allorigins.win`, no key, no cost) before giving up. If both attempts
-fail, it falls back to a small built-in offline sample dataset
-(`offline-data.js`). The status indicator reflects whichever path won:
+retries through a short chain of free public CORS-passthrough proxies
+(`api.allorigins.win`, `corsproxy.io`, `api.codetabs.com` — no keys, no
+cost) before giving up, since any single public proxy can be down or
+rate-limited on its own. If every attempt fails, it falls back to a small
+built-in offline sample dataset (`offline-data.js`). The status indicator
+reflects whichever path won:
 **LIVE** for a real Reddit response (direct or proxied), or **OFFLINE
 SAMPLE**. The app never breaks or looks empty.
 
