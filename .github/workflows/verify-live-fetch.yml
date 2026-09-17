@@ -1,0 +1,42 @@
+name: Verify live Reddit fetch
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: "Deployed base URL to test (e.g. https://your-app.vercel.app)"
+        required: true
+      subreddit:
+        description: "Subreddit to fetch"
+        required: false
+        default: "popular"
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch /api/reddit and report what came back
+        run: |
+          set -e
+          URL="${{ inputs.url }}/api/reddit?sub=${{ inputs.subreddit }}"
+          echo "Fetching: $URL"
+          echo "---"
+          HTTP_STATUS=$(curl -sS -o /tmp/response.json -w "%{http_code}" "$URL")
+          echo "HTTP status: $HTTP_STATUS"
+          echo "---"
+          echo "Response body:"
+          cat /tmp/response.json
+          echo ""
+          echo "---"
+          echo "Post titles found:"
+          node -e "
+            const data = require('/tmp/response.json');
+            const children = (data && data.data && data.data.children) || [];
+            if (!children.length) {
+              console.log('NO POSTS FOUND — response shape:', JSON.stringify(data).slice(0, 500));
+              process.exit(1);
+            }
+            children.forEach((c, i) => console.log((i+1) + '. ' + c.data.title));
+            console.log('');
+            console.log('SUCCESS: ' + children.length + ' real posts fetched from r/${{ inputs.subreddit }}');
+          "
