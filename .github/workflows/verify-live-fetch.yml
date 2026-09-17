@@ -10,19 +10,11 @@ on:
         description: "Subreddit to fetch"
         required: false
         default: "popular"
-      client_id:
-        description: "Reddit app client id (passed at dispatch time only, never stored in the workflow file)"
-        required: false
-        default: ""
-      client_secret:
-        description: "Reddit app client secret (passed at dispatch time only, never stored in the workflow file)"
-        required: false
-        default: ""
 
 env:
   TEST_SUBREDDIT: ${{ inputs.subreddit || 'popular' }}
-  REDDIT_CLIENT_ID: ${{ inputs.client_id }}
-  REDDIT_CLIENT_SECRET: ${{ inputs.client_secret }}
+  REDDIT_CLIENT_ID: ${{ secrets.REDDIT_CLIENT_ID }}
+  REDDIT_CLIENT_SECRET: ${{ secrets.REDDIT_CLIENT_SECRET }}
 
 jobs:
   verify:
@@ -61,15 +53,13 @@ jobs:
             echo "No client_id/client_secret supplied at dispatch time — skipping authenticated fetch test."
             exit 0
           fi
-          echo "Step A: obtain a real access token"
-          curl -sS -o /tmp/token.json -w "\nHTTP_STATUS:%{http_code}\n" \
+          echo "Step A: obtain a real access token (response body not printed — it contains the live token)"
+          HTTP_STATUS=$(curl -sS -o /tmp/token.json -w "%{http_code}" \
             -X POST "https://www.reddit.com/api/v1/access_token" \
             -A "fruit-fly-connectome-reddit-simulator/1.0 by u/fruit-fly-sim" \
             -u "${REDDIT_CLIENT_ID}:${REDDIT_CLIENT_SECRET}" \
-            -d "grant_type=client_credentials"
-          echo "---token response---"
-          cat /tmp/token.json
-          echo ""
+            -d "grant_type=client_credentials")
+          echo "Token request HTTP status: ${HTTP_STATUS}"
           ACCESS_TOKEN=$(node -e "try{const t=require('/tmp/token.json');console.log(t.access_token||'')}catch(e){console.log('')}")
           if [ -z "$ACCESS_TOKEN" ]; then
             echo "NO ACCESS TOKEN OBTAINED — cannot attempt authenticated fetch."
