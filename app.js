@@ -4,6 +4,7 @@
     subInput: document.getElementById("sub-input"),
     statusDot: document.getElementById("status-dot"),
     statusText: document.getElementById("status-text"),
+    postCard: document.getElementById("post-card"),
     postMeta: document.getElementById("post-meta"),
     postTitle: document.getElementById("post-title"),
     postStats: document.getElementById("post-stats"),
@@ -42,6 +43,7 @@
   let autoplayTimer = null;
   let loadToken = 0;
   let activeAbortController = null;
+  let isTransitioning = false;
 
   function normalizePost(d) {
     return {
@@ -54,20 +56,57 @@
     };
   }
 
-  async function fetchSubreddit(sub, signal) {
-    const url =
-      "https://www.reddit.com/r/" +
-      encodeURIComponent(sub) +
-      "/hot.json?limit=15&raw_json=1";
-    const res = await fetch(url, {
-      signal,
+  // Wraps fetch() with its own timeout while still honoring an outer
+  // "cancel everything for this load" signal (used when a newer subreddit
+  // request supersedes this one).
+  function fetchWithTimeout(url, outerSignal, timeoutMs) {
+    const controller = new AbortController();
+    const onAbort = () => controller.abort();
+    if (outerSignal.aborted) controller.abort();
+    else outerSignal.addEventListener("abort", onAbort);
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    return fetch(url, {
+      signal: controller.signal,
       headers: { Accept: "application/json" },
+    }).finally(() => {
+      clearTimeout(timer);
+      outerSignal.removeEventListener("abort", onAbort);
     });
-    if (!res.ok) throw new Error("HTTP " + res.status);
-    const json = await res.json();
+  }
+
+  function parseRedditJson(json) {
     const children = (json && json.data && json.data.children) || [];
     if (!children.length) throw new Error("empty response");
     return children.map((c) => normalizePost(c.data));
+  }
+
+  function redditUrl(sub) {
+    return (
+      "https://www.reddit.com/r/" +
+      encodeURIComponent(sub) +
+      "/hot.json?limit=15&raw_json=1"
+    );
+  }
+
+  // Attempt 1: fetch Reddit's public JSON endpoint directly from the
+  // browser. This works when Reddit's response includes a permissive CORS
+  // header for the requesting origin; it does not always.
+  async function fetchDirect(sub, outerSignal) {
+    const res = await fetchWithTimeout(redditUrl(sub), outerSignal, 6000);
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    return parseRedditJson(await res.json());
+  }
+
+  // Attempt 2: the same public, unauthenticated Reddit endpoint, relayed
+  // through a free public CORS-passthrough proxy (no key, no cost) for
+  // browsers that Reddit's own CORS policy blocks directly.
+  async function fetchViaProxy(sub, outerSignal) {
+    const proxied =
+      "https://api.allorigins.win/raw?url=" +
+      encodeURIComponent(redditUrl(sub));
+    const res = await fetchWithTimeout(proxied, outerSignal, 8000);
+    if (!res.ok) throw new Error("proxy HTTP " + res.status);
+    return parseRedditJson(await res.json());
   }
 
   function setStatus(mode, text) {
@@ -87,7 +126,6 @@
     if (activeAbortController) activeAbortController.abort();
     const controller = new AbortController();
     activeAbortController = controller;
-    const timer = setTimeout(() => controller.abort(), 7000);
 
     setStatus("loading", "Connecting to r/" + sub + "…");
     els.postTitle.textContent = "Loading feed…";
@@ -97,12 +135,14 @@
     let fetched;
     let live = true;
     try {
-      fetched = await fetchSubreddit(sub, controller.signal);
-    } catch (err) {
-      fetched = OFFLINE_POSTS.slice();
-      live = false;
-    } finally {
-      clearTimeout(timer);
+      fetched = await fetchDirect(sub, controller.signal);
+    } catch (directErr) {
+      try {
+        fetched = await fetchViaProxy(sub, controller.signal);
+      } catch (proxyErr) {
+        fetched = OFFLINE_POSTS.slice();
+        live = false;
+      }
     }
 
     if (myToken !== loadToken) return; // a newer request superseded this one
@@ -162,6 +202,11 @@
     );
     restartAnimation(els.fly, cls);
     setTimeout(() => els.fly.classList.remove(cls), 900);
+  }
+
+  function triggerFlyGlance() {
+    restartAnimation(els.fly, "glance");
+    setTimeout(() => els.fly.classList.remove("glance"), 500);
   }
 
   /* ---------------- Currently Sensing (live pills) ---------------- */
@@ -540,24 +585,50 @@
 
   /* ---------------- Navigation ---------------- */
 
+  // Every post change scrolls the phone card off-screen (as if the feed
+  // were swiped) before the next post scrolls in, so the fly visibly sees
+  // each post pass rather than having the content snap instantly.
+  const SCROLL_MS = 240;
+
+  function navigateTo(newIndex, tag) {
+    if (!posts.length || isTransitioning) return;
+    isTransitioning = true;
+
+    els.postCard.classList.add("scroll-out");
+    setTimeout(() => {
+      if (tag && currentBrain) {
+        tags.push({ post: posts[index], brain: currentBrain });
+        if (tags.length > MAX_TAGS) tags.shift();
+        renderTagStrip();
+        renderLog();
+        triggerFlyReaction(currentBrain.motor);
+        updateSidebar();
+      } else {
+        triggerFlyGlance();
+      }
+
+      index = newIndex;
+      showPost();
+
+      els.postCard.classList.remove("scroll-out");
+      els.postCard.classList.add("scroll-in");
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          els.postCard.classList.remove("scroll-in");
+          isTransitioning = false;
+        });
+      });
+    }, SCROLL_MS);
+  }
+
   function tagAndAdvance() {
     if (!posts.length || !currentBrain) return;
-    tags.push({ post: posts[index], brain: currentBrain });
-    if (tags.length > MAX_TAGS) tags.shift();
-
-    renderTagStrip();
-    renderLog();
-    triggerFlyReaction(currentBrain.motor);
-    updateSidebar();
-
-    index = (index + 1) % posts.length;
-    showPost();
+    navigateTo((index + 1) % posts.length, true);
   }
 
   function goPrev() {
     if (!posts.length) return;
-    index = (index - 1 + posts.length) % posts.length;
-    showPost();
+    navigateTo((index - 1 + posts.length) % posts.length, false);
   }
 
   function stopAutoplay() {
