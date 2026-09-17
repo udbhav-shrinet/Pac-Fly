@@ -105,6 +105,81 @@
     );
   }
 
+  // --- OAuth (app-only) attempt -------------------------------------
+  // Paste a Reddit app's client id/secret below to test this path locally
+  // (reddit.com/prefs/apps -> create app -> "script" type). Never commit
+  // real values here: this file ships to every visitor's browser, so
+  // anything in it is public, not secret. There is no build step in this
+  // project to inject a real secret safely either — that would require a
+  // server-side component this static site doesn't have. If both values
+  // are left as placeholders, getOAuthToken() fails immediately and the
+  // app falls straight through to the unauthenticated attempts below.
+  const REDDIT_CLIENT_ID = "YOUR_REDDIT_CLIENT_ID";
+  const REDDIT_CLIENT_SECRET = "YOUR_REDDIT_CLIENT_SECRET";
+
+  let oauthToken = null;
+  let oauthTokenExpiresAt = 0;
+
+  async function getOAuthToken(outerSignal) {
+    if (oauthToken && Date.now() < oauthTokenExpiresAt) return oauthToken;
+
+    const controller = new AbortController();
+    const onAbort = () => controller.abort();
+    if (outerSignal.aborted) controller.abort();
+    else outerSignal.addEventListener("abort", onAbort);
+    const timer = setTimeout(() => controller.abort(), 5000);
+
+    try {
+      const res = await fetch("https://www.reddit.com/api/v1/access_token", {
+        method: "POST",
+        signal: controller.signal,
+        headers: {
+          Authorization: "Basic " + btoa(REDDIT_CLIENT_ID + ":" + REDDIT_CLIENT_SECRET),
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: "grant_type=client_credentials",
+      });
+      if (!res.ok) throw new Error("token HTTP " + res.status);
+      const json = await res.json();
+      if (!json.access_token) throw new Error("no access_token in response");
+      oauthToken = json.access_token;
+      oauthTokenExpiresAt = Date.now() + (json.expires_in || 3600) * 1000 - 30000;
+      return oauthToken;
+    } finally {
+      clearTimeout(timer);
+      outerSignal.removeEventListener("abort", onAbort);
+    }
+  }
+
+  // Attempt 0: an authenticated app-only (client_credentials) OAuth call
+  // to oauth.reddit.com, using the demo credentials above. Reddit's OAuth
+  // token endpoint generally does not grant CORS access to arbitrary
+  // browser origins for confidential clients either, so this is expected
+  // to fail the same way direct fetch can — it's tried first, and any
+  // failure (token request or data request) falls straight through to
+  // the unauthenticated attempts below without breaking anything.
+  async function fetchViaOAuth(sub, outerSignal) {
+    try {
+      const token = await getOAuthToken(outerSignal);
+      const url =
+        "https://oauth.reddit.com/r/" +
+        encodeURIComponent(sub) +
+        "/hot?limit=15&raw_json=1";
+      const res = await fetch(url, {
+        signal: outerSignal,
+        headers: {
+          Authorization: "Bearer " + token,
+          Accept: "application/json",
+        },
+      });
+      if (!res.ok) throw new Error("oauth HTTP " + res.status);
+      return parseRedditJson(await res.json());
+    } catch (err) {
+      console.warn("[FlyBrain] OAuth Reddit fetch failed:", err);
+      throw err;
+    }
+  }
+
   // Attempt 1: fetch Reddit's public JSON endpoint directly from the
   // browser. This works when Reddit's response includes a permissive CORS
   // header for the requesting origin; it does not always.
@@ -200,14 +275,20 @@
     let fetched;
     let lastErr;
     try {
-      fetched = await fetchDirect(sub, controller.signal);
-    } catch (directErr) {
-      lastErr = directErr;
+      fetched = await fetchViaOAuth(sub, controller.signal);
+    } catch (oauthErr) {
+      lastErr = oauthErr;
       try {
-        fetched = await fetchViaProxies(sub, controller.signal);
+        fetched = await fetchDirect(sub, controller.signal);
         lastErr = null;
-      } catch (proxyErr) {
-        lastErr = proxyErr;
+      } catch (directErr) {
+        lastErr = directErr;
+        try {
+          fetched = await fetchViaProxies(sub, controller.signal);
+          lastErr = null;
+        } catch (proxyErr) {
+          lastErr = proxyErr;
+        }
       }
     }
 
