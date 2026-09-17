@@ -1,15 +1,22 @@
 name: Verify live Reddit fetch
 
 on:
+  push:
+    paths:
+      - ".github/workflows/verify-live-fetch.yml"
   workflow_dispatch:
     inputs:
       url:
         description: "Deployed base URL to test (e.g. https://your-app.vercel.app)"
-        required: true
+        required: false
       subreddit:
         description: "Subreddit to fetch"
         required: false
         default: "popular"
+
+env:
+  TEST_URL: ${{ inputs.url || 'https://fruit-fly-reddit-simulator-udbhav-shrinets-projects.vercel.app' }}
+  TEST_SUBREDDIT: ${{ inputs.subreddit || 'popular' }}
 
 jobs:
   verify:
@@ -18,7 +25,7 @@ jobs:
       - name: Fetch /api/reddit and report what came back
         run: |
           set -e
-          URL="${{ inputs.url }}/api/reddit?sub=${{ inputs.subreddit }}"
+          URL="${TEST_URL}/api/reddit?sub=${TEST_SUBREDDIT}"
           echo "Fetching: $URL"
           echo "---"
           HTTP_STATUS=$(curl -sS -o /tmp/response.json -w "%{http_code}" "$URL")
@@ -38,5 +45,5 @@ jobs:
             }
             children.forEach((c, i) => console.log((i+1) + '. ' + c.data.title));
             console.log('');
-            console.log('SUCCESS: ' + children.length + ' real posts fetched from r/${{ inputs.subreddit }}');
+            console.log('SUCCESS: ' + children.length + ' real posts fetched from r/' + process.env.TEST_SUBREDDIT);
           "
