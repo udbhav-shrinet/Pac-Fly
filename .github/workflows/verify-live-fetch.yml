@@ -20,22 +20,38 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Fetch real Reddit data server-side (the exact mechanism api/reddit.js uses)
+      - name: Try www.reddit.com and old.reddit.com with realistic browser headers
         run: |
+          set +e
+          for HOST in "www.reddit.com" "old.reddit.com"; do
+            URL="https://${HOST}/r/${TEST_SUBREDDIT}/hot.json?limit=15&raw_json=1"
+            echo "=== Fetching: $URL ==="
+            HTTP_STATUS=$(curl -sS -L \
+              -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" \
+              -H "Accept: application/json, text/plain, */*" \
+              -H "Accept-Language: en-US,en;q=0.9" \
+              -H "Accept-Encoding: gzip, deflate, br" \
+              -H "Connection: keep-alive" \
+              -H "Sec-Fetch-Mode: cors" \
+              --compressed \
+              -o "/tmp/reddit_${HOST}.json" -w "%{http_code}" "$URL")
+            echo "HTTP status: $HTTP_STATUS"
+            echo "First 200 chars:"
+            head -c 200 "/tmp/reddit_${HOST}.json"
+            echo ""
+            echo ""
+          done
+
+          # Use whichever host actually returned real JSON, preferring www.
+          for HOST in "www.reddit.com" "old.reddit.com"; do
+            if node -e "const d=require('/tmp/reddit_${HOST}.json'); process.exit((d.data && d.data.children && d.data.children.length) ? 0 : 1)" 2>/dev/null; then
+              echo "WORKING_HOST=$HOST" >> "$GITHUB_ENV"
+              cp "/tmp/reddit_${HOST}.json" /tmp/reddit.json
+              echo "=== $HOST returned real data, using it ==="
+              break
+            fi
+          done
           set -e
-          URL="https://www.reddit.com/r/${TEST_SUBREDDIT}/hot.json?limit=15&raw_json=1"
-          echo "Fetching: $URL"
-          echo "---"
-          HTTP_STATUS=$(curl -sS -L \
-            -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" \
-            -H "Accept: application/json" \
-            -H "Accept-Language: en-US,en;q=0.9" \
-            -o /tmp/reddit.json -w "%{http_code}" "$URL")
-          echo "HTTP status: $HTTP_STATUS"
-          echo "---"
-          echo "First 300 chars of response:"
-          head -c 300 /tmp/reddit.json
-          echo ""
           echo "---"
           node -e "
             const data = require('/tmp/reddit.json');
