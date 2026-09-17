@@ -114,8 +114,8 @@
   // server-side component this static site doesn't have. If both values
   // are left as placeholders, getOAuthToken() fails immediately and the
   // app falls straight through to the unauthenticated attempts below.
-  const REDDIT_CLIENT_ID = "YOUR_REDDIT_CLIENT_ID";
-  const REDDIT_CLIENT_SECRET = "YOUR_REDDIT_CLIENT_SECRET";
+  const REDDIT_CLIENT_ID = "xiKwPOI6DE87ZB-IAxVlOA";
+  const REDDIT_CLIENT_SECRET = "24ObWXWFU0ZlN5pJoiQ344vdXan4Ag";
 
   let oauthToken = null;
   let oauthTokenExpiresAt = 0;
