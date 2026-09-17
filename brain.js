@@ -51,6 +51,12 @@
     return n + bangs * 0.3;
   }
 
+  function matchedWords(text, words) {
+    const out = [];
+    for (const w of words) if (text.includes(w)) out.push(w);
+    return out;
+  }
+
   function analyzePost(post) {
     const title = post.title || "";
     const body = post.selftext || "";
@@ -68,6 +74,9 @@
     const rewardHits = countHits(text, REWARD_WORDS);
     const threatHits = countHits(text, THREAT_WORDS);
     const arousalHits = countHits(text, AROUSAL_WORDS);
+    const rewardMatches = matchedWords(text, REWARD_WORDS);
+    const threatMatches = matchedWords(text, THREAT_WORDS);
+    const arousalMatches = matchedWords(text, AROUSAL_WORDS);
 
     const normScore = logNorm(score, 4.5);
     const normComments = logNorm(comments, 3.2);
@@ -138,6 +147,7 @@
     };
 
     return {
+      titleLen,
       sweet,
       geosmin,
       dominantChannel: sweet >= geosmin ? "sweet" : "geosmin",
@@ -152,7 +162,54 @@
       rewardHits,
       threatHits,
       arousalHits,
+      rewardMatches,
+      threatMatches,
+      arousalMatches,
     };
+  }
+
+  // Derived, human-readable tags for the post log and live sense readouts.
+  // Pure function of an already-computed brain result — no new randomness.
+  function classify(brain) {
+    const highArousal = brain.spikeFreq > 100;
+    let emotion;
+    if (highArousal && brain.valence >= 0) emotion = "Elated";
+    else if (highArousal && brain.valence < 0) emotion = "Alarmed";
+    else if (!highArousal && brain.valence >= 0) emotion = "Content";
+    else emotion = "Bored";
+
+    const feeling =
+      brain.valence > 0.15
+        ? "Positive"
+        : brain.valence < -0.15
+        ? "Negative"
+        : "Neutral";
+
+    const stressLevel = (brain.octopamine + brain.tyramine) / 2;
+    const stress =
+      stressLevel > 0.6 ? "High Stress" : stressLevel > 0.45 ? "Moderate Stress" : "Low Stress";
+
+    const vision =
+      brain.titleLen > 80
+        ? "Dense Mosaic"
+        : brain.titleLen > 40
+        ? "Layered Pattern"
+        : "Simple Pattern";
+
+    const hearing =
+      brain.spikeFreq > 150
+        ? "Loud Chatter"
+        : brain.spikeFreq > 80
+        ? "Moderate Murmur"
+        : "Quiet Hum";
+
+    const smellIntensity =
+      brain.dominantChannel === "sweet" ? brain.sweet : brain.geosmin;
+    const smell =
+      (brain.dominantChannel === "sweet" ? "Sweet Plume" : "Geosmin Alarm") +
+      (smellIntensity > 0.6 ? " (Strong)" : smellIntensity > 0.35 ? " (Faint)" : " (Trace)");
+
+    return { emotion, feeling, stress, vision, hearing, smell };
   }
 
   // Behavioral state machine: aggregate neuromodulator averages -> one state.
@@ -170,6 +227,7 @@
   global.FlyBrain = {
     analyzePost,
     aggregateState,
+    classify,
     REWARD_WORDS,
     THREAT_WORDS,
     AROUSAL_WORDS,

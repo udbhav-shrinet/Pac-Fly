@@ -38,7 +38,7 @@
     </div>
   </header>
 
-  <main class="main-grid">
+  <main class="app-main">
 
     <section class="scene-panel" aria-label="Simulated fruit fly observing a Reddit feed on a smartphone">
       <div class="scene" id="scene">
@@ -77,8 +77,15 @@
       </div>
     </section>
 
-    <aside class="sidebar" aria-label="Fly brain vitals and subreddit vibe summary">
-      <h2 class="sidebar-title">Vitals</h2>
+    <aside class="sidebar" aria-label="Fly brain receptors, live readout, and vitals">
+      <h2 class="sidebar-title">Currently Sensing</h2>
+      <div class="live-readout" id="live-readout">
+        <span class="live-pill live-emotion" id="live-emotion">—</span>
+        <span class="live-pill live-stress" id="live-stress">—</span>
+        <span class="live-pill live-feeling" id="live-feeling">—</span>
+      </div>
+
+      <h2 class="sidebar-title">Vitals · Session Average</h2>
 
       <div class="gauge">
         <div class="gauge-label"><span>Dopamine</span><b id="val-dopamine">—</b></div>
@@ -112,12 +119,41 @@
           <strong id="mean-valence">—</strong>
         </div>
       </div>
-
-      <h2 class="sidebar-title">Subreddit Vibe</h2>
-      <p class="vibe-summary" id="vibe-summary" aria-live="polite">
-        Scan a subreddit and swipe through posts to generate a vibe summary…
-      </p>
     </aside>
+
+    <section class="senses-row" aria-label="Real-time fly sensory perception of the current post">
+      <div class="sense-col sense-vision">
+        <h3><span aria-hidden="true">👁</span> Vision <em>Compound Eye</em></h3>
+        <p class="sense-readout" id="vision-readout">—</p>
+        <div class="compound-eye" id="compound-eye"></div>
+      </div>
+
+      <div class="sense-col sense-hearing">
+        <h3><span aria-hidden="true">👂</span> Hearing <em>Cochlea Trace</em></h3>
+        <p class="sense-readout" id="hearing-readout">—</p>
+        <canvas id="hearing-canvas" width="280" height="90"></canvas>
+      </div>
+
+      <div class="sense-col sense-smell">
+        <h3><span aria-hidden="true">👃</span> Smell <em>Antennal Plume</em></h3>
+        <p class="sense-readout" id="smell-readout">—</p>
+        <div class="plume" id="plume"></div>
+      </div>
+    </section>
+
+    <section class="log-panel" aria-label="Log of every post the fly has scanned, tagged with its computed reaction">
+      <h2 class="sidebar-title">Scan Log</h2>
+      <div class="log-list" id="log-list">
+        <p class="log-empty" id="log-empty">No posts tagged yet — swipe through the feed to build the log.</p>
+      </div>
+    </section>
+
+    <section class="summary-panel" aria-label="Auto-generated subreddit vibe summary">
+      <h2 class="sidebar-title">Fly Field Report</h2>
+      <p class="vibe-summary" id="vibe-summary" aria-live="polite">
+        Scan a subreddit and swipe through posts to generate a field report…
+      </p>
+    </section>
 
   </main>
 </div>

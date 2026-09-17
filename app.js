@@ -18,16 +18,30 @@
     meanFreq: document.getElementById("mean-freq"),
     meanValence: document.getElementById("mean-valence"),
     vibeSummary: document.getElementById("vibe-summary"),
+    liveEmotion: document.getElementById("live-emotion"),
+    liveStress: document.getElementById("live-stress"),
+    liveFeeling: document.getElementById("live-feeling"),
+    visionReadout: document.getElementById("vision-readout"),
+    compoundEye: document.getElementById("compound-eye"),
+    hearingReadout: document.getElementById("hearing-readout"),
+    hearingCanvas: document.getElementById("hearing-canvas"),
+    smellReadout: document.getElementById("smell-readout"),
+    plume: document.getElementById("plume"),
+    logList: document.getElementById("log-list"),
+    logEmpty: document.getElementById("log-empty"),
   };
 
   const MODULATORS = ["dopamine", "serotonin", "octopamine", "tyramine"];
+  const MAX_TAGS = 60;
 
   let subreddit = "popular";
   let posts = [];
   let index = 0;
+  let currentBrain = null;
   let tags = [];
   let autoplayTimer = null;
-  const MAX_TAGS = 60;
+  let loadToken = 0;
+  let activeAbortController = null;
 
   function normalizePost(d) {
     return {
@@ -40,26 +54,20 @@
     };
   }
 
-  async function fetchSubreddit(sub) {
+  async function fetchSubreddit(sub, signal) {
     const url =
       "https://www.reddit.com/r/" +
       encodeURIComponent(sub) +
       "/hot.json?limit=15&raw_json=1";
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 7000);
-    try {
-      const res = await fetch(url, {
-        signal: controller.signal,
-        headers: { Accept: "application/json" },
-      });
-      if (!res.ok) throw new Error("HTTP " + res.status);
-      const json = await res.json();
-      const children = (json && json.data && json.data.children) || [];
-      if (!children.length) throw new Error("empty response");
-      return children.map((c) => normalizePost(c.data));
-    } finally {
-      clearTimeout(timer);
-    }
+    const res = await fetch(url, {
+      signal,
+      headers: { Accept: "application/json" },
+    });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const json = await res.json();
+    const children = (json && json.data && json.data.children) || [];
+    if (!children.length) throw new Error("empty response");
+    return children.map((c) => normalizePost(c.data));
   }
 
   function setStatus(mode, text) {
@@ -67,32 +75,57 @@
     els.statusText.textContent = text;
   }
 
+  // Loads a subreddit's feed. Guarded against races: if the user submits a
+  // new subreddit while an older fetch is still in flight, the older
+  // request's result (success or failure) is discarded when it lands.
   async function loadSubreddit(sub) {
     subreddit = sub;
     stopAutoplay();
+
+    loadToken += 1;
+    const myToken = loadToken;
+    if (activeAbortController) activeAbortController.abort();
+    const controller = new AbortController();
+    activeAbortController = controller;
+    const timer = setTimeout(() => controller.abort(), 7000);
+
     setStatus("loading", "Connecting to r/" + sub + "…");
     els.postTitle.textContent = "Loading feed…";
     els.postMeta.textContent = "r/" + sub + " · loading…";
     els.postStats.textContent = "";
 
+    let fetched;
+    let live = true;
     try {
-      posts = await fetchSubreddit(sub);
-      setStatus("live", "LIVE · r/" + sub);
+      fetched = await fetchSubreddit(sub, controller.signal);
     } catch (err) {
-      posts = OFFLINE_POSTS.slice();
-      setStatus("offline", "OFFLINE SAMPLE · live fetch failed");
+      fetched = OFFLINE_POSTS.slice();
+      live = false;
+    } finally {
+      clearTimeout(timer);
     }
+
+    if (myToken !== loadToken) return; // a newer request superseded this one
+
+    posts = fetched;
+    setStatus(
+      live ? "live" : "offline",
+      live ? "LIVE · r/" + sub : "OFFLINE SAMPLE · live fetch failed"
+    );
 
     index = 0;
     tags = [];
     renderTagStrip();
+    renderLog();
     updateSidebar();
-    renderPhone();
+    showPost();
   }
 
-  function renderPhone() {
+  function showPost() {
     const post = posts[index];
     if (!post) return;
+    currentBrain = FlyBrain.analyzePost(post);
+
     els.postMeta.textContent = "r/" + subreddit + " · post " + (index + 1);
     els.postTitle.textContent = post.title;
     els.postStats.textContent =
@@ -104,6 +137,9 @@
       Math.round(post.upvote_ratio * 100) +
       "% upvoted";
     els.postCounter.textContent = index + 1 + " / " + posts.length;
+
+    renderLiveReadout(post, currentBrain);
+    renderSenses(post, currentBrain);
   }
 
   function fmtPct(x) {
@@ -115,8 +151,7 @@
 
   function restartAnimation(el, className) {
     el.classList.remove(className);
-    // Force reflow so the animation/transition can replay.
-    void el.offsetWidth;
+    void el.offsetWidth; // force reflow so the animation can replay
     el.classList.add(className);
   }
 
@@ -129,6 +164,124 @@
     setTimeout(() => els.fly.classList.remove(cls), 900);
   }
 
+  /* ---------------- Currently Sensing (live pills) ---------------- */
+
+  function renderLiveReadout(post, brain) {
+    const c = FlyBrain.classify(brain);
+    els.liveEmotion.textContent = c.emotion;
+    els.liveEmotion.className = "live-pill emo-" + c.emotion.toLowerCase();
+    els.liveStress.textContent = c.stress;
+    els.liveStress.className =
+      "live-pill stress-" + c.stress.split(" ")[0].toLowerCase();
+    els.liveFeeling.textContent = c.feeling;
+    els.liveFeeling.className =
+      "live-pill feel-" + c.feeling.toLowerCase();
+  }
+
+  /* ---------------- Senses: Vision / Hearing / Smell ---------------- */
+
+  function renderSenses(post, brain) {
+    renderVision(post, brain);
+    renderHearing(brain);
+    renderSmell(post, brain);
+  }
+
+  function renderVision(post, brain) {
+    const c = FlyBrain.classify(brain);
+    els.visionReadout.textContent =
+      "Mosaic of a " +
+      brain.titleLen +
+      "-char headline · " +
+      c.vision +
+      " · " +
+      (brain.dominantChannel === "sweet" ? "green-tinted" : "amber-tinted") +
+      " facets";
+
+    els.compoundEye.innerHTML = "";
+    const title = post.title;
+    const hue = brain.dominantChannel === "sweet" ? 145 : 32;
+    for (let i = 0; i < 18; i++) {
+      const cell = document.createElement("div");
+      cell.className = "eye-cell";
+      cell.style.setProperty(
+        "--tint",
+        "hsl(" + hue + "deg 70% " + (40 + (i % 4) * 6) + "%)"
+      );
+      cell.style.filter = "hue-rotate(" + i * 6 + "deg) saturate(1.3)";
+      const span = document.createElement("span");
+      span.textContent = title;
+      span.style.marginLeft = -((i * 41) % 240) + "px";
+      cell.appendChild(span);
+      els.compoundEye.appendChild(cell);
+    }
+  }
+
+  function renderHearing(brain) {
+    const c = FlyBrain.classify(brain);
+    els.hearingReadout.textContent =
+      Math.round(brain.spikeFreq) +
+      " Hz chatter · " +
+      c.hearing +
+      (brain.arousalHits > 0
+        ? " · " + Math.round(brain.arousalHits) + " urgent cue(s)"
+        : " · steady murmur");
+  }
+
+  let hearingPhase = 0;
+  function drawHearingFrame() {
+    const canvas = els.hearingCanvas;
+    const ctx = canvas.getContext("2d");
+    const brain = currentBrain;
+    const freq = brain ? brain.spikeFreq : 20;
+    const amp = brain ? 8 + brain.arousalHits * 5 : 6;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.strokeStyle = "#3ddcff";
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    const w = canvas.width;
+    const h = canvas.height;
+    const mid = h / 2;
+    const speed = freq / 900;
+    for (let x = 0; x < w; x++) {
+      const envelope = Math.sin((x / w) * Math.PI);
+      const y = mid + Math.sin(x * speed + hearingPhase) * amp * envelope;
+      if (x === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    hearingPhase += 0.12 + freq / 600;
+    requestAnimationFrame(drawHearingFrame);
+  }
+
+  function renderSmell(post, brain) {
+    const c = FlyBrain.classify(brain);
+    const cues =
+      brain.dominantChannel === "sweet"
+        ? brain.rewardMatches
+        : brain.threatMatches;
+    els.smellReadout.textContent =
+      c.smell +
+      " · " +
+      (cues.length ? "cues: " + cues.slice(0, 3).join(", ") : "no strong keyword cues");
+
+    els.plume.innerHTML = "";
+    const sweetCount = Math.round(4 + brain.sweet * 12);
+    const geosminCount = Math.round(4 + brain.geosmin * 12);
+    for (let i = 0; i < sweetCount; i++) spawnParticle("sweet");
+    for (let i = 0; i < geosminCount; i++) spawnParticle("geosmin");
+  }
+
+  function spawnParticle(kind) {
+    const p = document.createElement("div");
+    p.className = "plume-particle " + kind;
+    p.style.left = Math.random() * 92 + "%";
+    p.style.animationDuration = 1.8 + Math.random() * 1.8 + "s";
+    p.style.animationDelay = Math.random() * 2 + "s";
+    els.plume.appendChild(p);
+  }
+
+  /* ---------------- Tag strip (phone-side stickers) ---------------- */
+
   function renderTagStrip() {
     els.tagStrip.innerHTML = "";
     if (!tags.length) {
@@ -138,9 +291,7 @@
     tags
       .slice()
       .reverse()
-      .forEach((entry) => {
-        els.tagStrip.appendChild(buildChip(entry));
-      });
+      .forEach((entry) => els.tagStrip.appendChild(buildChip(entry)));
   }
 
   function buildChip(entry) {
@@ -179,6 +330,79 @@
     return chip;
   }
 
+  /* ---------------- Scan log (full tag set per post) ---------------- */
+
+  function renderLog() {
+    els.logList.innerHTML = "";
+    if (!tags.length) {
+      els.logList.appendChild(els.logEmpty);
+      return;
+    }
+    tags
+      .slice()
+      .reverse()
+      .forEach((entry) => els.logList.appendChild(buildLogRow(entry)));
+  }
+
+  function buildLogRow(entry) {
+    const b = entry.brain;
+    const c = FlyBrain.classify(b);
+    const row = document.createElement("div");
+    row.className = "log-row motor-" + b.motor;
+
+    const header = document.createElement("div");
+    header.className = "log-row-header";
+    const title = document.createElement("span");
+    title.className = "log-row-title";
+    title.textContent = entry.post.title;
+    const motor = document.createElement("span");
+    motor.className = "log-row-motor";
+    motor.textContent = "→ " + b.motorLabel;
+    header.appendChild(title);
+    header.appendChild(motor);
+    row.appendChild(header);
+
+    const tagsRow = document.createElement("div");
+    tagsRow.className = "log-row-tags";
+
+    const hormoneTag = document.createElement("span");
+    hormoneTag.className = "log-tag";
+    hormoneTag.textContent =
+      "DA " + fmtPct(b.dopamine) +
+      " · 5HT " + fmtPct(b.serotonin) +
+      " · OA " + fmtPct(b.octopamine) +
+      " · TY " + fmtPct(b.tyramine);
+    tagsRow.appendChild(hormoneTag);
+
+    const emotionTag = document.createElement("span");
+    emotionTag.className = "log-tag tag-emotion";
+    emotionTag.textContent = "😶 " + c.emotion;
+    tagsRow.appendChild(emotionTag);
+
+    const feelingTag = document.createElement("span");
+    feelingTag.className =
+      "log-tag tag-feeling " +
+      (b.valence > 0.15 ? "pos" : b.valence < -0.15 ? "neg" : "");
+    feelingTag.textContent = "Feeling: " + c.feeling;
+    tagsRow.appendChild(feelingTag);
+
+    const stressTag = document.createElement("span");
+    stressTag.className = "log-tag tag-stress";
+    stressTag.textContent = c.stress;
+    tagsRow.appendChild(stressTag);
+
+    const sensesTag = document.createElement("span");
+    sensesTag.className = "log-tag tag-senses";
+    sensesTag.textContent =
+      "👁 " + c.vision + "  🔊 " + c.hearing + "  👃 " + c.smell;
+    tagsRow.appendChild(sensesTag);
+
+    row.appendChild(tagsRow);
+    return row;
+  }
+
+  /* ---------------- Sidebar vitals + field report ---------------- */
+
   function updateSidebar() {
     if (!tags.length) {
       MODULATORS.forEach((m) => {
@@ -189,7 +413,7 @@
       els.meanFreq.textContent = "— Hz";
       els.meanValence.textContent = "—";
       els.vibeSummary.textContent =
-        "Scan a subreddit and swipe through posts to generate a vibe summary…";
+        "Scan a subreddit and swipe through posts to generate a field report…";
       return;
     }
 
@@ -233,6 +457,14 @@
     });
   }
 
+  const STATE_EMOJI = {
+    "Predator Evasion": "🚨",
+    Foraging: "🍯",
+    Resting: "😴",
+    Grooming: "🪶",
+    Locomotion: "🚶",
+  };
+
   function buildVibeSummary(agg) {
     const { n, sweetCount, motorCounts, state, meanFreq, meanValence, means } =
       agg;
@@ -262,9 +494,22 @@
         ? "a broadly negative"
         : "a mixed, ambivalent";
     const arousal = meanFreq > 90 ? "high" : meanFreq > 45 ? "moderate" : "low";
+    const emoji = STATE_EMOJI[state] || "🪰";
+
+    const verdict =
+      state === "Predator Evasion"
+        ? "The fly keeps flinching off the glass — this feed reads like a minefield."
+        : state === "Foraging"
+        ? "The fly keeps creeping its proboscis toward the screen, hunting for the next reward hit."
+        : state === "Resting"
+        ? "The fly has mostly settled, wings folded, barely twitching at the scroll."
+        : state === "Grooming"
+        ? "The fly keeps pausing to groom itself between posts — a self-soothing, low-stakes feed."
+        : "The fly just keeps pacing the glass, neither drawn in nor repelled.";
 
     return (
-      "r/" +
+      emoji +
+      " r/" +
       subreddit +
       " currently reads as " +
       state +
@@ -272,9 +517,9 @@
       n +
       " posts scanned, " +
       sweetPct +
-      "% triggered the sweet/appetitive antennal-lobe channel and " +
+      "% lit up the sweet/appetitive antennal-lobe channel and " +
       geosminPct +
-      "% triggered geosmin/aversive alarm. Mean mushroom-body valence is " +
+      "% triggered a geosmin/aversive alarm. Mean mushroom-body valence sits at " +
       fmtSigned(meanValence) +
       ", suggesting " +
       tone +
@@ -282,35 +527,37 @@
       arousal +
       " auditory arousal (mean spike frequency " +
       Math.round(meanFreq) +
-      " Hz). Octopamine averages " +
+      " Hz) and octopamine averaging " +
       fmtPct(means.octopamine) +
-      " and the dominant motor response was " +
+      ". Its dominant motor response was " +
       motorNames[dominantMotorKey] +
       " (" +
       motorPct +
-      "% of posts)."
+      "% of posts). " +
+      verdict
     );
   }
 
+  /* ---------------- Navigation ---------------- */
+
   function tagAndAdvance() {
-    if (!posts.length) return;
-    const post = posts[index];
-    const brain = FlyBrain.analyzePost(post);
-    tags.push({ post, brain });
+    if (!posts.length || !currentBrain) return;
+    tags.push({ post: posts[index], brain: currentBrain });
     if (tags.length > MAX_TAGS) tags.shift();
 
     renderTagStrip();
-    triggerFlyReaction(brain.motor);
+    renderLog();
+    triggerFlyReaction(currentBrain.motor);
     updateSidebar();
 
     index = (index + 1) % posts.length;
-    renderPhone();
+    showPost();
   }
 
   function goPrev() {
     if (!posts.length) return;
     index = (index - 1 + posts.length) % posts.length;
-    renderPhone();
+    showPost();
   }
 
   function stopAutoplay() {
@@ -344,5 +591,6 @@
     else startAutoplay();
   });
 
+  requestAnimationFrame(drawHearingFrame);
   loadSubreddit(subreddit);
 })();

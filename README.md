@@ -39,16 +39,30 @@ arousal keyword lexicon). Nothing is hardcoded per post:
 ## Interface
 
 - **Header** — subreddit search bar and a live/offline status indicator.
-- **Scene (center)** — a stylized, CSS-3D fruit fly watching a
+- **Scene (top-left)** — a stylized, CSS-3D fruit fly watching a
   smartphone. The phone screen shows one Reddit post at a time; clicking
   Next (or Auto-Swipe) "tags" the post with color-coded stickers of the
   fly's computed reaction (spike frequency, mushroom-body valence,
   dominant antennal-lobe channel, octopamine level, motor output) and
   plays a matching reaction animation on the fly.
-- **Sidebar (right)** — four neuromodulator gauges, the aggregate
-  behavioral state, mean spike frequency, mean valence, and an
-  auto-generated "Subreddit Vibe" summary built entirely from the tagged
-  posts.
+- **Sidebar (top-right)** — a "Currently Sensing" live readout (emotion,
+  stress, feeling) for the post on screen right now, plus four
+  neuromodulator gauges, the aggregate behavioral state, mean spike
+  frequency, and mean valence, all averaged across every tagged post.
+- **Senses row** — three real-time panels showing exactly what the fly
+  is perceiving about the *current* post, updated the instant it appears
+  (before it's even tagged): **Vision** renders the headline as a
+  fragmented compound-eye mosaic; **Hearing** draws a live oscilloscope
+  trace whose frequency and amplitude track the computed spike rate;
+  **Smell** animates a rising particle plume of sweet (green) vs.
+  geosmin (orange) cues, with the actual keywords detected.
+- **Scan log** — every tagged post, newest first, with its full tag set:
+  hormone snapshot, emotional state, feeling (sentiment), stress level,
+  and a senses summary (vision/hearing/smell descriptors), next to its
+  motor output.
+- **Fly Field Report** — an auto-generated, slightly narrative summary
+  (full width, bottom) of the subreddit's overall "vibe" based entirely
+  on the aggregated tags and the fly's behavioral state.
 
 ## Run
 
