@@ -13,15 +13,21 @@ endpoint. Reddit doesn't always send a CORS header that allows that direct
 browser fetch, so if it's blocked (or the request otherwise fails), the app
 retries through a short chain of free public CORS-passthrough proxies
 (`api.allorigins.win`, `corsproxy.io`, `api.codetabs.com` — no keys, no
-cost) before giving up, since any single public proxy can be down or
-rate-limited on its own. If every attempt fails, it falls back to a small
-built-in offline sample dataset (`offline-data.js`). The status indicator
-reflects whichever path won:
-**LIVE** for a real Reddit response (direct or proxied), or **OFFLINE
-SAMPLE**. The app never breaks or looks empty.
+cost), since any single public proxy can be down or rate-limited on its
+own.
 
-Every post — live or offline — runs through the same brain pipeline
-(`brain.js`), driven entirely by the post's real stats (title length,
+There is no offline sample data and no canned fallback content — this is a
+live-data-only app. If direct fetch and every proxy fail, the app does not
+go dead: it shows **RETRYING** with the actual failure reason (e.g.
+"network/CORS blocked", an HTTP status, or "timed out") and automatically
+retries with exponential backoff (3s, 6s, 12s, up to a 30s cap) until a
+real Reddit response comes back — live data always wins over nothing. A
+**Retry Now** button next to the status indicator forces an immediate
+attempt instead of waiting out the backoff. Once a fetch succeeds, the
+status switches to **LIVE**.
+
+Every post runs through the same brain pipeline (`brain.js`), driven
+entirely by the post's real stats (title length,
 score, comment count, upvote ratio) and text (via a small reward/threat/
 arousal keyword lexicon). Nothing is hardcoded per post:
 
@@ -44,7 +50,8 @@ arousal keyword lexicon). Nothing is hardcoded per post:
 
 ## Interface
 
-- **Header** — subreddit search bar and a live/offline status indicator.
+- **Header** — subreddit search bar, a status indicator (LIVE / connecting /
+  retrying), and a Retry Now button.
 - **Scene (top-left)** — a stylized, CSS-3D fruit fly watching a
   smartphone. The phone screen shows one Reddit post at a time; clicking
   Next (or Auto-Swipe) "tags" the post with color-coded stickers of the
@@ -85,5 +92,4 @@ Open `http://localhost:8000`. No build step, no dependencies to install.
 - `index.html` — page structure and layout.
 - `styles.css` — dark-slate theme, 3D scene, gauges, tag chips.
 - `brain.js` — the simulated fruit fly brain (pure functions, no DOM).
-- `offline-data.js` — built-in offline sample dataset.
-- `app.js` — Reddit fetch/fallback, feed navigation, sidebar rendering.
+- `app.js` — Reddit fetch/retry, feed navigation, sidebar rendering.
