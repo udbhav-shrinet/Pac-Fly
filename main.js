@@ -22,7 +22,7 @@
   let noteIndex = 0;
   const BEAT_MS_BASE = 60000; // divided by bpm to get ms per beat
 
-  const audio = { context: null, master: null, timer: null, playing: false };
+  const audio = { context: null, master: null, timer: null, playing: false, volume: .8 };
   let brain = null;
   let brainBackend = 'CONNECTOME LIF';
   const brainReady = FullBrainBridge.create().then(value => {
@@ -65,9 +65,22 @@
 
   function setupAudio() {
     audio.context ||= new (window.AudioContext || window.webkitAudioContext)();
-    audio.master ||= audio.context.createGain();
-    audio.master.gain.value = .8;
-    audio.master.connect(audio.context.destination);
+    if (!audio.master) {
+      audio.master = audio.context.createGain();
+      audio.master.gain.value = audio.volume;
+      // Measured peaks were around -13dBFS with the harmonic voice below —
+      // clearly audible on headphones but easy to miss on laptop speakers.
+      // A limiter lets the raw gain be pushed up without the summed
+      // harmonics + noise transient clipping on loud chords.
+      audio.limiter = audio.context.createDynamicsCompressor();
+      audio.limiter.threshold.value = -8;
+      audio.limiter.knee.value = 6;
+      audio.limiter.ratio.value = 12;
+      audio.limiter.attack.value = .002;
+      audio.limiter.release.value = .15;
+      audio.master.connect(audio.limiter).connect(audio.context.destination);
+    }
+    audio.master.gain.value = audio.volume;
     if (audio.context.state === 'suspended') audio.context.resume();
   }
 
@@ -237,7 +250,7 @@
         if (noteIndex % song.notes.length === 0) brain.onPelletEaten(false);
       }
 
-      const gain = .16 + snap.dopamine * .14;
+      const gain = .55 + snap.dopamine * .25;
       playNote(midi, (beats * beatMs / 1000) * .85, gain);
 
       $('dopamine-value').textContent = `${Math.round(snap.dopamine * 100)}%`;
@@ -260,6 +273,10 @@
   }
 
   $('play-track').addEventListener('click', () => audio.playing ? stopTrack() : startTrack());
+  $('volume').addEventListener('input', e => {
+    audio.volume = Number(e.target.value) / 100;
+    if (audio.master) audio.master.gain.value = audio.volume;
+  });
   $('song-picker').addEventListener('change', e => {
     track = Number(e.target.value);
     noteIndex = 0;
