@@ -1,0 +1,1914 @@
+{
+ "meta": {
+  "name": "Pac-Fly pruned foraging/escape sub-circuit",
+  "species": "Drosophila melanogaster",
+  "provenance": "Population identities, projection directions and synaptic signs follow published FlyWire/hemibrain connectivity for these circuits. Relative weight magnitudes are hand-set, not scraped synapse counts.",
+  "references": [
+   "https://codex.flywire.ai",
+   "https://neuprint.janelia.org"
+  ],
+  "neuronCount": 66,
+  "synapseCount": 270,
+  "sensoryPorts": {
+   "sugarLeft": "ORN_sugar_L",
+   "sugarRight": "ORN_sugar_R",
+   "loomingLeft": "LC4_L",
+   "loomingRight": "LC4_R",
+   "auditoryLeft": "LPLC2_L",
+   "auditoryRight": "LPLC2_R",
+   "reward": "PAM_DAN",
+   "punishment": "PPL1_DAN",
+   "hungerDrive": "NPF",
+   "heading": "EPG"
+  },
+  "motorPorts": {
+   "turnLeft": "DNa_left",
+   "turnRight": "DNa_right",
+   "forward": "DNp09_fwd",
+   "reverse": "MDN_escape",
+   "escapeCommand": "GF"
+  }
+ },
+ "neurons": [
+  {
+   "id": "ORN_sugar_L_0",
+   "population": "ORN_sugar_L",
+   "role": "sensory",
+   "threshold": 1,
+   "tau": 0.8,
+   "refractory": 1
+  },
+  {
+   "id": "ORN_sugar_L_1",
+   "population": "ORN_sugar_L",
+   "role": "sensory",
+   "threshold": 1,
+   "tau": 0.8,
+   "refractory": 1
+  },
+  {
+   "id": "ORN_sugar_L_2",
+   "population": "ORN_sugar_L",
+   "role": "sensory",
+   "threshold": 1,
+   "tau": 0.8,
+   "refractory": 1
+  },
+  {
+   "id": "ORN_sugar_R_0",
+   "population": "ORN_sugar_R",
+   "role": "sensory",
+   "threshold": 1,
+   "tau": 0.8,
+   "refractory": 1
+  },
+  {
+   "id": "ORN_sugar_R_1",
+   "population": "ORN_sugar_R",
+   "role": "sensory",
+   "threshold": 1,
+   "tau": 0.8,
+   "refractory": 1
+  },
+  {
+   "id": "ORN_sugar_R_2",
+   "population": "ORN_sugar_R",
+   "role": "sensory",
+   "threshold": 1,
+   "tau": 0.8,
+   "refractory": 1
+  },
+  {
+   "id": "PN_L_0",
+   "population": "PN_L",
+   "role": "interneuron",
+   "threshold": 1,
+   "tau": 0.84,
+   "refractory": 1
+  },
+  {
+   "id": "PN_L_1",
+   "population": "PN_L",
+   "role": "interneuron",
+   "threshold": 1,
+   "tau": 0.84,
+   "refractory": 1
+  },
+  {
+   "id": "PN_L_2",
+   "population": "PN_L",
+   "role": "interneuron",
+   "threshold": 1,
+   "tau": 0.84,
+   "refractory": 1
+  },
+  {
+   "id": "PN_R_0",
+   "population": "PN_R",
+   "role": "interneuron",
+   "threshold": 1,
+   "tau": 0.84,
+   "refractory": 1
+  },
+  {
+   "id": "PN_R_1",
+   "population": "PN_R",
+   "role": "interneuron",
+   "threshold": 1,
+   "tau": 0.84,
+   "refractory": 1
+  },
+  {
+   "id": "PN_R_2",
+   "population": "PN_R",
+   "role": "interneuron",
+   "threshold": 1,
+   "tau": 0.84,
+   "refractory": 1
+  },
+  {
+   "id": "LH_L_0",
+   "population": "LH_L",
+   "role": "interneuron",
+   "threshold": 1,
+   "tau": 0.84,
+   "refractory": 1
+  },
+  {
+   "id": "LH_L_1",
+   "population": "LH_L",
+   "role": "interneuron",
+   "threshold": 1,
+   "tau": 0.84,
+   "refractory": 1
+  },
+  {
+   "id": "LH_R_0",
+   "population": "LH_R",
+   "role": "interneuron",
+   "threshold": 1,
+   "tau": 0.84,
+   "refractory": 1
+  },
+  {
+   "id": "LH_R_1",
+   "population": "LH_R",
+   "role": "interneuron",
+   "threshold": 1,
+   "tau": 0.84,
+   "refractory": 1
+  },
+  {
+   "id": "KC_0",
+   "population": "KC",
+   "role": "interneuron",
+   "threshold": 1.15,
+   "tau": 0.85,
+   "refractory": 2
+  },
+  {
+   "id": "KC_1",
+   "population": "KC",
+   "role": "interneuron",
+   "threshold": 1.15,
+   "tau": 0.85,
+   "refractory": 2
+  },
+  {
+   "id": "KC_2",
+   "population": "KC",
+   "role": "interneuron",
+   "threshold": 1.15,
+   "tau": 0.85,
+   "refractory": 2
+  },
+  {
+   "id": "KC_3",
+   "population": "KC",
+   "role": "interneuron",
+   "threshold": 1.15,
+   "tau": 0.85,
+   "refractory": 2
+  },
+  {
+   "id": "KC_4",
+   "population": "KC",
+   "role": "interneuron",
+   "threshold": 1.15,
+   "tau": 0.85,
+   "refractory": 2
+  },
+  {
+   "id": "KC_5",
+   "population": "KC",
+   "role": "interneuron",
+   "threshold": 1.15,
+   "tau": 0.85,
+   "refractory": 2
+  },
+  {
+   "id": "KC_6",
+   "population": "KC",
+   "role": "interneuron",
+   "threshold": 1.15,
+   "tau": 0.85,
+   "refractory": 2
+  },
+  {
+   "id": "KC_7",
+   "population": "KC",
+   "role": "interneuron",
+   "threshold": 1.15,
+   "tau": 0.85,
+   "refractory": 2
+  },
+  {
+   "id": "MBON_approach_0",
+   "population": "MBON_approach",
+   "role": "interneuron",
+   "threshold": 1,
+   "tau": 0.86,
+   "refractory": 1
+  },
+  {
+   "id": "MBON_approach_1",
+   "population": "MBON_approach",
+   "role": "interneuron",
+   "threshold": 1,
+   "tau": 0.86,
+   "refractory": 1
+  },
+  {
+   "id": "MBON_approach_2",
+   "population": "MBON_approach",
+   "role": "interneuron",
+   "threshold": 1,
+   "tau": 0.86,
+   "refractory": 1
+  },
+  {
+   "id": "PAM_DAN_0",
+   "population": "PAM_DAN",
+   "role": "modulatory",
+   "threshold": 1,
+   "tau": 0.88,
+   "refractory": 1
+  },
+  {
+   "id": "PAM_DAN_1",
+   "population": "PAM_DAN",
+   "role": "modulatory",
+   "threshold": 1,
+   "tau": 0.88,
+   "refractory": 1
+  },
+  {
+   "id": "PAM_DAN_2",
+   "population": "PAM_DAN",
+   "role": "modulatory",
+   "threshold": 1,
+   "tau": 0.88,
+   "refractory": 1
+  },
+  {
+   "id": "PAM_DAN_3",
+   "population": "PAM_DAN",
+   "role": "modulatory",
+   "threshold": 1,
+   "tau": 0.88,
+   "refractory": 1
+  },
+  {
+   "id": "PPL1_DAN_0",
+   "population": "PPL1_DAN",
+   "role": "modulatory",
+   "threshold": 1,
+   "tau": 0.9,
+   "refractory": 1
+  },
+  {
+   "id": "PPL1_DAN_1",
+   "population": "PPL1_DAN",
+   "role": "modulatory",
+   "threshold": 1,
+   "tau": 0.9,
+   "refractory": 1
+  },
+  {
+   "id": "PPL1_DAN_2",
+   "population": "PPL1_DAN",
+   "role": "modulatory",
+   "threshold": 1,
+   "tau": 0.9,
+   "refractory": 1
+  },
+  {
+   "id": "NPF_0",
+   "population": "NPF",
+   "role": "modulatory",
+   "threshold": 1,
+   "tau": 0.995,
+   "refractory": 1
+  },
+  {
+   "id": "NPF_1",
+   "population": "NPF",
+   "role": "modulatory",
+   "threshold": 1,
+   "tau": 0.995,
+   "refractory": 1
+  },
+  {
+   "id": "LC4_L_0",
+   "population": "LC4_L",
+   "role": "sensory",
+   "threshold": 0.9,
+   "tau": 0.75,
+   "refractory": 1
+  },
+  {
+   "id": "LC4_L_1",
+   "population": "LC4_L",
+   "role": "sensory",
+   "threshold": 0.9,
+   "tau": 0.75,
+   "refractory": 1
+  },
+  {
+   "id": "LC4_L_2",
+   "population": "LC4_L",
+   "role": "sensory",
+   "threshold": 0.9,
+   "tau": 0.75,
+   "refractory": 1
+  },
+  {
+   "id": "LC4_R_0",
+   "population": "LC4_R",
+   "role": "sensory",
+   "threshold": 0.9,
+   "tau": 0.75,
+   "refractory": 1
+  },
+  {
+   "id": "LC4_R_1",
+   "population": "LC4_R",
+   "role": "sensory",
+   "threshold": 0.9,
+   "tau": 0.75,
+   "refractory": 1
+  },
+  {
+   "id": "LC4_R_2",
+   "population": "LC4_R",
+   "role": "sensory",
+   "threshold": 0.9,
+   "tau": 0.75,
+   "refractory": 1
+  },
+  {
+   "id": "LPLC2_L_0",
+   "population": "LPLC2_L",
+   "role": "sensory",
+   "threshold": 0.95,
+   "tau": 0.78,
+   "refractory": 1
+  },
+  {
+   "id": "LPLC2_L_1",
+   "population": "LPLC2_L",
+   "role": "sensory",
+   "threshold": 0.95,
+   "tau": 0.78,
+   "refractory": 1
+  },
+  {
+   "id": "LPLC2_R_0",
+   "population": "LPLC2_R",
+   "role": "sensory",
+   "threshold": 0.95,
+   "tau": 0.78,
+   "refractory": 1
+  },
+  {
+   "id": "LPLC2_R_1",
+   "population": "LPLC2_R",
+   "role": "sensory",
+   "threshold": 0.95,
+   "tau": 0.78,
+   "refractory": 1
+  },
+  {
+   "id": "GF_0",
+   "population": "GF",
+   "role": "command",
+   "threshold": 1.05,
+   "tau": 0.7,
+   "refractory": 2
+  },
+  {
+   "id": "GF_1",
+   "population": "GF",
+   "role": "command",
+   "threshold": 1.05,
+   "tau": 0.7,
+   "refractory": 2
+  },
+  {
+   "id": "OA_VPM_0",
+   "population": "OA_VPM",
+   "role": "modulatory",
+   "threshold": 1,
+   "tau": 0.985,
+   "refractory": 1
+  },
+  {
+   "id": "OA_VPM_1",
+   "population": "OA_VPM",
+   "role": "modulatory",
+   "threshold": 1,
+   "tau": 0.985,
+   "refractory": 1
+  },
+  {
+   "id": "OA_VPM_2",
+   "population": "OA_VPM",
+   "role": "modulatory",
+   "threshold": 1,
+   "tau": 0.985,
+   "refractory": 1
+  },
+  {
+   "id": "EPG_0",
+   "population": "EPG",
+   "role": "interneuron",
+   "threshold": 1,
+   "tau": 0.86,
+   "refractory": 1
+  },
+  {
+   "id": "EPG_1",
+   "population": "EPG",
+   "role": "interneuron",
+   "threshold": 1,
+   "tau": 0.86,
+   "refractory": 1
+  },
+  {
+   "id": "EPG_2",
+   "population": "EPG",
+   "role": "interneuron",
+   "threshold": 1,
+   "tau": 0.86,
+   "refractory": 1
+  },
+  {
+   "id": "EPG_3",
+   "population": "EPG",
+   "role": "interneuron",
+   "threshold": 1,
+   "tau": 0.86,
+   "refractory": 1
+  },
+  {
+   "id": "DNa_left_0",
+   "population": "DNa_left",
+   "role": "motor",
+   "threshold": 1,
+   "tau": 0.8,
+   "refractory": 1
+  },
+  {
+   "id": "DNa_left_1",
+   "population": "DNa_left",
+   "role": "motor",
+   "threshold": 1,
+   "tau": 0.8,
+   "refractory": 1
+  },
+  {
+   "id": "DNa_left_2",
+   "population": "DNa_left",
+   "role": "motor",
+   "threshold": 1,
+   "tau": 0.8,
+   "refractory": 1
+  },
+  {
+   "id": "DNa_right_0",
+   "population": "DNa_right",
+   "role": "motor",
+   "threshold": 1,
+   "tau": 0.8,
+   "refractory": 1
+  },
+  {
+   "id": "DNa_right_1",
+   "population": "DNa_right",
+   "role": "motor",
+   "threshold": 1,
+   "tau": 0.8,
+   "refractory": 1
+  },
+  {
+   "id": "DNa_right_2",
+   "population": "DNa_right",
+   "role": "motor",
+   "threshold": 1,
+   "tau": 0.8,
+   "refractory": 1
+  },
+  {
+   "id": "DNp09_fwd_0",
+   "population": "DNp09_fwd",
+   "role": "motor",
+   "threshold": 1,
+   "tau": 0.8,
+   "refractory": 1
+  },
+  {
+   "id": "DNp09_fwd_1",
+   "population": "DNp09_fwd",
+   "role": "motor",
+   "threshold": 1,
+   "tau": 0.8,
+   "refractory": 1
+  },
+  {
+   "id": "DNp09_fwd_2",
+   "population": "DNp09_fwd",
+   "role": "motor",
+   "threshold": 1,
+   "tau": 0.8,
+   "refractory": 1
+  },
+  {
+   "id": "MDN_escape_0",
+   "population": "MDN_escape",
+   "role": "motor",
+   "threshold": 1.05,
+   "tau": 0.78,
+   "refractory": 1
+  },
+  {
+   "id": "MDN_escape_1",
+   "population": "MDN_escape",
+   "role": "motor",
+   "threshold": 1.05,
+   "tau": 0.78,
+   "refractory": 1
+  }
+ ],
+ "synapses": [
+  {
+   "pre": "ORN_sugar_L_0",
+   "post": "PN_L_0",
+   "weight": 0.9322
+  },
+  {
+   "pre": "ORN_sugar_L_0",
+   "post": "PN_L_1",
+   "weight": 0.855
+  },
+  {
+   "pre": "ORN_sugar_L_0",
+   "post": "PN_L_2",
+   "weight": 0.795
+  },
+  {
+   "pre": "ORN_sugar_L_1",
+   "post": "PN_L_0",
+   "weight": 0.9478
+  },
+  {
+   "pre": "ORN_sugar_L_1",
+   "post": "PN_L_1",
+   "weight": 0.9036
+  },
+  {
+   "pre": "ORN_sugar_L_1",
+   "post": "PN_L_2",
+   "weight": 0.797
+  },
+  {
+   "pre": "ORN_sugar_L_2",
+   "post": "PN_L_0",
+   "weight": 0.8722
+  },
+  {
+   "pre": "ORN_sugar_L_2",
+   "post": "PN_L_1",
+   "weight": 0.8272
+  },
+  {
+   "pre": "ORN_sugar_L_2",
+   "post": "PN_L_2",
+   "weight": 0.8311
+  },
+  {
+   "pre": "ORN_sugar_R_0",
+   "post": "PN_R_0",
+   "weight": 0.9844
+  },
+  {
+   "pre": "ORN_sugar_R_0",
+   "post": "PN_R_1",
+   "weight": 0.9832
+  },
+  {
+   "pre": "ORN_sugar_R_0",
+   "post": "PN_R_2",
+   "weight": 0.8904
+  },
+  {
+   "pre": "ORN_sugar_R_1",
+   "post": "PN_R_0",
+   "weight": 0.9258
+  },
+  {
+   "pre": "ORN_sugar_R_1",
+   "post": "PN_R_1",
+   "weight": 0.9284
+  },
+  {
+   "pre": "ORN_sugar_R_1",
+   "post": "PN_R_2",
+   "weight": 0.9227
+  },
+  {
+   "pre": "ORN_sugar_R_2",
+   "post": "PN_R_0",
+   "weight": 0.7997
+  },
+  {
+   "pre": "ORN_sugar_R_2",
+   "post": "PN_R_1",
+   "weight": 0.9037
+  },
+  {
+   "pre": "ORN_sugar_R_2",
+   "post": "PN_R_2",
+   "weight": 0.8993
+  },
+  {
+   "pre": "PN_L_0",
+   "post": "LH_L_0",
+   "weight": 0.6828
+  },
+  {
+   "pre": "PN_L_0",
+   "post": "LH_L_1",
+   "weight": 0.7462
+  },
+  {
+   "pre": "PN_L_1",
+   "post": "LH_L_0",
+   "weight": 0.7244
+  },
+  {
+   "pre": "PN_L_1",
+   "post": "LH_L_1",
+   "weight": 0.7048
+  },
+  {
+   "pre": "PN_L_2",
+   "post": "LH_L_0",
+   "weight": 0.618
+  },
+  {
+   "pre": "PN_L_2",
+   "post": "LH_L_1",
+   "weight": 0.7715
+  },
+  {
+   "pre": "PN_R_0",
+   "post": "LH_R_0",
+   "weight": 0.6779
+  },
+  {
+   "pre": "PN_R_0",
+   "post": "LH_R_1",
+   "weight": 0.7795
+  },
+  {
+   "pre": "PN_R_1",
+   "post": "LH_R_0",
+   "weight": 0.6895
+  },
+  {
+   "pre": "PN_R_1",
+   "post": "LH_R_1",
+   "weight": 0.6721
+  },
+  {
+   "pre": "PN_R_2",
+   "post": "LH_R_0",
+   "weight": 0.6435
+  },
+  {
+   "pre": "PN_R_2",
+   "post": "LH_R_1",
+   "weight": 0.6853
+  },
+  {
+   "pre": "LH_L_0",
+   "post": "DNa_left_0",
+   "weight": 0.4924
+  },
+  {
+   "pre": "LH_L_0",
+   "post": "DNa_left_1",
+   "weight": 0.5675
+  },
+  {
+   "pre": "LH_L_0",
+   "post": "DNa_left_2",
+   "weight": 0.524
+  },
+  {
+   "pre": "LH_L_1",
+   "post": "DNa_left_0",
+   "weight": 0.5416
+  },
+  {
+   "pre": "LH_L_1",
+   "post": "DNa_left_1",
+   "weight": 0.5382
+  },
+  {
+   "pre": "LH_L_1",
+   "post": "DNa_left_2",
+   "weight": 0.5307
+  },
+  {
+   "pre": "LH_R_0",
+   "post": "DNa_right_0",
+   "weight": 0.4944
+  },
+  {
+   "pre": "LH_R_0",
+   "post": "DNa_right_1",
+   "weight": 0.6084
+  },
+  {
+   "pre": "LH_R_0",
+   "post": "DNa_right_2",
+   "weight": 0.5437
+  },
+  {
+   "pre": "LH_R_1",
+   "post": "DNa_right_0",
+   "weight": 0.5074
+  },
+  {
+   "pre": "LH_R_1",
+   "post": "DNa_right_1",
+   "weight": 0.5129
+  },
+  {
+   "pre": "LH_R_1",
+   "post": "DNa_right_2",
+   "weight": 0.5339
+  },
+  {
+   "pre": "PN_L_0",
+   "post": "KC_0",
+   "weight": 0.3851
+  },
+  {
+   "pre": "PN_L_0",
+   "post": "KC_1",
+   "weight": 0.3238
+  },
+  {
+   "pre": "PN_L_0",
+   "post": "KC_7",
+   "weight": 0.3843
+  },
+  {
+   "pre": "PN_L_0",
+   "post": "KC_3",
+   "weight": 0.3522
+  },
+  {
+   "pre": "PN_L_1",
+   "post": "KC_2",
+   "weight": 0.363
+  },
+  {
+   "pre": "PN_L_1",
+   "post": "KC_7",
+   "weight": 0.3537
+  },
+  {
+   "pre": "PN_L_1",
+   "post": "KC_1",
+   "weight": 0.3899
+  },
+  {
+   "pre": "PN_L_1",
+   "post": "KC_3",
+   "weight": 0.3443
+  },
+  {
+   "pre": "PN_L_2",
+   "post": "KC_2",
+   "weight": 0.3831
+  },
+  {
+   "pre": "PN_L_2",
+   "post": "KC_1",
+   "weight": 0.357
+  },
+  {
+   "pre": "PN_L_2",
+   "post": "KC_6",
+   "weight": 0.3395
+  },
+  {
+   "pre": "PN_L_2",
+   "post": "KC_0",
+   "weight": 0.3198
+  },
+  {
+   "pre": "PN_R_0",
+   "post": "KC_1",
+   "weight": 0.3524
+  },
+  {
+   "pre": "PN_R_0",
+   "post": "KC_7",
+   "weight": 0.3802
+  },
+  {
+   "pre": "PN_R_0",
+   "post": "KC_3",
+   "weight": 0.314
+  },
+  {
+   "pre": "PN_R_0",
+   "post": "KC_6",
+   "weight": 0.3852
+  },
+  {
+   "pre": "PN_R_1",
+   "post": "KC_2",
+   "weight": 0.3294
+  },
+  {
+   "pre": "PN_R_1",
+   "post": "KC_7",
+   "weight": 0.3507
+  },
+  {
+   "pre": "PN_R_1",
+   "post": "KC_3",
+   "weight": 0.3182
+  },
+  {
+   "pre": "PN_R_1",
+   "post": "KC_5",
+   "weight": 0.374
+  },
+  {
+   "pre": "PN_R_2",
+   "post": "KC_6",
+   "weight": 0.3533
+  },
+  {
+   "pre": "PN_R_2",
+   "post": "KC_3",
+   "weight": 0.3085
+  },
+  {
+   "pre": "PN_R_2",
+   "post": "KC_7",
+   "weight": 0.39
+  },
+  {
+   "pre": "PN_R_2",
+   "post": "KC_4",
+   "weight": 0.3342
+  },
+  {
+   "pre": "KC_0",
+   "post": "MBON_approach_0",
+   "weight": 0.4829
+  },
+  {
+   "pre": "KC_0",
+   "post": "MBON_approach_1",
+   "weight": 0.426
+  },
+  {
+   "pre": "KC_1",
+   "post": "MBON_approach_1",
+   "weight": 0.4206
+  },
+  {
+   "pre": "KC_1",
+   "post": "MBON_approach_0",
+   "weight": 0.4286
+  },
+  {
+   "pre": "KC_2",
+   "post": "MBON_approach_2",
+   "weight": 0.4709
+  },
+  {
+   "pre": "KC_2",
+   "post": "MBON_approach_1",
+   "weight": 0.4199
+  },
+  {
+   "pre": "KC_3",
+   "post": "MBON_approach_0",
+   "weight": 0.4157
+  },
+  {
+   "pre": "KC_3",
+   "post": "MBON_approach_1",
+   "weight": 0.4186
+  },
+  {
+   "pre": "KC_4",
+   "post": "MBON_approach_0",
+   "weight": 0.436
+  },
+  {
+   "pre": "KC_4",
+   "post": "MBON_approach_2",
+   "weight": 0.403
+  },
+  {
+   "pre": "KC_5",
+   "post": "MBON_approach_0",
+   "weight": 0.4153
+  },
+  {
+   "pre": "KC_5",
+   "post": "MBON_approach_1",
+   "weight": 0.4992
+  },
+  {
+   "pre": "KC_6",
+   "post": "MBON_approach_2",
+   "weight": 0.4497
+  },
+  {
+   "pre": "KC_6",
+   "post": "MBON_approach_1",
+   "weight": 0.4655
+  },
+  {
+   "pre": "KC_7",
+   "post": "MBON_approach_2",
+   "weight": 0.4961
+  },
+  {
+   "pre": "KC_7",
+   "post": "MBON_approach_1",
+   "weight": 0.4421
+  },
+  {
+   "pre": "MBON_approach_0",
+   "post": "DNp09_fwd_0",
+   "weight": 0.5232
+  },
+  {
+   "pre": "MBON_approach_0",
+   "post": "DNp09_fwd_1",
+   "weight": 0.5108
+  },
+  {
+   "pre": "MBON_approach_0",
+   "post": "DNp09_fwd_2",
+   "weight": 0.4747
+  },
+  {
+   "pre": "MBON_approach_1",
+   "post": "DNp09_fwd_0",
+   "weight": 0.4958
+  },
+  {
+   "pre": "MBON_approach_1",
+   "post": "DNp09_fwd_1",
+   "weight": 0.4706
+  },
+  {
+   "pre": "MBON_approach_1",
+   "post": "DNp09_fwd_2",
+   "weight": 0.463
+  },
+  {
+   "pre": "MBON_approach_2",
+   "post": "DNp09_fwd_0",
+   "weight": 0.4603
+  },
+  {
+   "pre": "MBON_approach_2",
+   "post": "DNp09_fwd_1",
+   "weight": 0.444
+  },
+  {
+   "pre": "MBON_approach_2",
+   "post": "DNp09_fwd_2",
+   "weight": 0.5013
+  },
+  {
+   "pre": "PAM_DAN_0",
+   "post": "MBON_approach_0",
+   "weight": 0.6188
+  },
+  {
+   "pre": "PAM_DAN_0",
+   "post": "MBON_approach_1",
+   "weight": 0.6465
+  },
+  {
+   "pre": "PAM_DAN_0",
+   "post": "MBON_approach_2",
+   "weight": 0.5996
+  },
+  {
+   "pre": "PAM_DAN_1",
+   "post": "MBON_approach_0",
+   "weight": 0.6476
+  },
+  {
+   "pre": "PAM_DAN_1",
+   "post": "MBON_approach_1",
+   "weight": 0.6003
+  },
+  {
+   "pre": "PAM_DAN_1",
+   "post": "MBON_approach_2",
+   "weight": 0.6369
+  },
+  {
+   "pre": "PAM_DAN_2",
+   "post": "MBON_approach_0",
+   "weight": 0.5996
+  },
+  {
+   "pre": "PAM_DAN_2",
+   "post": "MBON_approach_1",
+   "weight": 0.5605
+  },
+  {
+   "pre": "PAM_DAN_2",
+   "post": "MBON_approach_2",
+   "weight": 0.6312
+  },
+  {
+   "pre": "PAM_DAN_3",
+   "post": "MBON_approach_0",
+   "weight": 0.5889
+  },
+  {
+   "pre": "PAM_DAN_3",
+   "post": "MBON_approach_1",
+   "weight": 0.5729
+  },
+  {
+   "pre": "PAM_DAN_3",
+   "post": "MBON_approach_2",
+   "weight": 0.6077
+  },
+  {
+   "pre": "PAM_DAN_0",
+   "post": "NPF_0",
+   "weight": -0.856
+  },
+  {
+   "pre": "PAM_DAN_0",
+   "post": "NPF_1",
+   "weight": -0.9693
+  },
+  {
+   "pre": "PAM_DAN_1",
+   "post": "NPF_0",
+   "weight": -0.9037
+  },
+  {
+   "pre": "PAM_DAN_1",
+   "post": "NPF_1",
+   "weight": -0.8032
+  },
+  {
+   "pre": "PAM_DAN_2",
+   "post": "NPF_0",
+   "weight": -0.9757
+  },
+  {
+   "pre": "PAM_DAN_2",
+   "post": "NPF_1",
+   "weight": -0.8773
+  },
+  {
+   "pre": "PAM_DAN_3",
+   "post": "NPF_0",
+   "weight": -0.7956
+  },
+  {
+   "pre": "PAM_DAN_3",
+   "post": "NPF_1",
+   "weight": -0.8353
+  },
+  {
+   "pre": "NPF_0",
+   "post": "PN_L_0",
+   "weight": 0.5516
+  },
+  {
+   "pre": "NPF_0",
+   "post": "PN_L_1",
+   "weight": 0.5447
+  },
+  {
+   "pre": "NPF_0",
+   "post": "PN_L_2",
+   "weight": 0.5328
+  },
+  {
+   "pre": "NPF_1",
+   "post": "PN_L_0",
+   "weight": 0.4631
+  },
+  {
+   "pre": "NPF_1",
+   "post": "PN_L_1",
+   "weight": 0.5263
+  },
+  {
+   "pre": "NPF_1",
+   "post": "PN_L_2",
+   "weight": 0.5515
+  },
+  {
+   "pre": "NPF_0",
+   "post": "PN_R_0",
+   "weight": 0.538
+  },
+  {
+   "pre": "NPF_0",
+   "post": "PN_R_1",
+   "weight": 0.5025
+  },
+  {
+   "pre": "NPF_0",
+   "post": "PN_R_2",
+   "weight": 0.5305
+  },
+  {
+   "pre": "NPF_1",
+   "post": "PN_R_0",
+   "weight": 0.5394
+  },
+  {
+   "pre": "NPF_1",
+   "post": "PN_R_1",
+   "weight": 0.4833
+  },
+  {
+   "pre": "NPF_1",
+   "post": "PN_R_2",
+   "weight": 0.4938
+  },
+  {
+   "pre": "NPF_0",
+   "post": "DNp09_fwd_0",
+   "weight": 0.4138
+  },
+  {
+   "pre": "NPF_0",
+   "post": "DNp09_fwd_1",
+   "weight": 0.3918
+  },
+  {
+   "pre": "NPF_0",
+   "post": "DNp09_fwd_2",
+   "weight": 0.3618
+  },
+  {
+   "pre": "NPF_1",
+   "post": "DNp09_fwd_0",
+   "weight": 0.3884
+  },
+  {
+   "pre": "NPF_1",
+   "post": "DNp09_fwd_1",
+   "weight": 0.4449
+  },
+  {
+   "pre": "NPF_1",
+   "post": "DNp09_fwd_2",
+   "weight": 0.3627
+  },
+  {
+   "pre": "NPF_0",
+   "post": "NPF_1",
+   "weight": 0.1472
+  },
+  {
+   "pre": "NPF_1",
+   "post": "NPF_0",
+   "weight": 0.1494
+  },
+  {
+   "pre": "PPL1_DAN_0",
+   "post": "MBON_approach_0",
+   "weight": -1.2971
+  },
+  {
+   "pre": "PPL1_DAN_0",
+   "post": "MBON_approach_1",
+   "weight": -1.2908
+  },
+  {
+   "pre": "PPL1_DAN_0",
+   "post": "MBON_approach_2",
+   "weight": -1.1558
+  },
+  {
+   "pre": "PPL1_DAN_1",
+   "post": "MBON_approach_0",
+   "weight": -1.1896
+  },
+  {
+   "pre": "PPL1_DAN_1",
+   "post": "MBON_approach_1",
+   "weight": -1.2825
+  },
+  {
+   "pre": "PPL1_DAN_1",
+   "post": "MBON_approach_2",
+   "weight": -1.2892
+  },
+  {
+   "pre": "PPL1_DAN_2",
+   "post": "MBON_approach_0",
+   "weight": -1.13
+  },
+  {
+   "pre": "PPL1_DAN_2",
+   "post": "MBON_approach_1",
+   "weight": -1.0888
+  },
+  {
+   "pre": "PPL1_DAN_2",
+   "post": "MBON_approach_2",
+   "weight": -1.3382
+  },
+  {
+   "pre": "PPL1_DAN_0",
+   "post": "DNp09_fwd_0",
+   "weight": -0.7259
+  },
+  {
+   "pre": "PPL1_DAN_0",
+   "post": "DNp09_fwd_1",
+   "weight": -0.8618
+  },
+  {
+   "pre": "PPL1_DAN_0",
+   "post": "DNp09_fwd_2",
+   "weight": -0.8093
+  },
+  {
+   "pre": "PPL1_DAN_1",
+   "post": "DNp09_fwd_0",
+   "weight": -0.8802
+  },
+  {
+   "pre": "PPL1_DAN_1",
+   "post": "DNp09_fwd_1",
+   "weight": -0.8751
+  },
+  {
+   "pre": "PPL1_DAN_1",
+   "post": "DNp09_fwd_2",
+   "weight": -0.7201
+  },
+  {
+   "pre": "PPL1_DAN_2",
+   "post": "DNp09_fwd_0",
+   "weight": -0.7999
+  },
+  {
+   "pre": "PPL1_DAN_2",
+   "post": "DNp09_fwd_1",
+   "weight": -0.7232
+  },
+  {
+   "pre": "PPL1_DAN_2",
+   "post": "DNp09_fwd_2",
+   "weight": -0.8592
+  },
+  {
+   "pre": "LC4_L_0",
+   "post": "GF_0",
+   "weight": 0.7276
+  },
+  {
+   "pre": "LC4_L_0",
+   "post": "GF_1",
+   "weight": 0.7666
+  },
+  {
+   "pre": "LC4_L_1",
+   "post": "GF_0",
+   "weight": 0.7719
+  },
+  {
+   "pre": "LC4_L_1",
+   "post": "GF_1",
+   "weight": 0.7989
+  },
+  {
+   "pre": "LC4_L_2",
+   "post": "GF_0",
+   "weight": 0.8635
+  },
+  {
+   "pre": "LC4_L_2",
+   "post": "GF_1",
+   "weight": 0.7256
+  },
+  {
+   "pre": "LC4_R_0",
+   "post": "GF_0",
+   "weight": 0.8524
+  },
+  {
+   "pre": "LC4_R_0",
+   "post": "GF_1",
+   "weight": 0.7961
+  },
+  {
+   "pre": "LC4_R_1",
+   "post": "GF_0",
+   "weight": 0.801
+  },
+  {
+   "pre": "LC4_R_1",
+   "post": "GF_1",
+   "weight": 0.8579
+  },
+  {
+   "pre": "LC4_R_2",
+   "post": "GF_0",
+   "weight": 0.7954
+  },
+  {
+   "pre": "LC4_R_2",
+   "post": "GF_1",
+   "weight": 0.7555
+  },
+  {
+   "pre": "LPLC2_L_0",
+   "post": "GF_0",
+   "weight": 0.6615
+  },
+  {
+   "pre": "LPLC2_L_0",
+   "post": "GF_1",
+   "weight": 0.6668
+  },
+  {
+   "pre": "LPLC2_L_1",
+   "post": "GF_0",
+   "weight": 0.6707
+  },
+  {
+   "pre": "LPLC2_L_1",
+   "post": "GF_1",
+   "weight": 0.6371
+  },
+  {
+   "pre": "LPLC2_R_0",
+   "post": "GF_0",
+   "weight": 0.5777
+  },
+  {
+   "pre": "LPLC2_R_0",
+   "post": "GF_1",
+   "weight": 0.6103
+  },
+  {
+   "pre": "LPLC2_R_1",
+   "post": "GF_0",
+   "weight": 0.6451
+  },
+  {
+   "pre": "LPLC2_R_1",
+   "post": "GF_1",
+   "weight": 0.6943
+  },
+  {
+   "pre": "LC4_L_0",
+   "post": "DNa_right_0",
+   "weight": 1.3848
+  },
+  {
+   "pre": "LC4_L_0",
+   "post": "DNa_right_1",
+   "weight": 1.4738
+  },
+  {
+   "pre": "LC4_L_0",
+   "post": "DNa_right_2",
+   "weight": 1.296
+  },
+  {
+   "pre": "LC4_L_1",
+   "post": "DNa_right_0",
+   "weight": 1.3362
+  },
+  {
+   "pre": "LC4_L_1",
+   "post": "DNa_right_1",
+   "weight": 1.4194
+  },
+  {
+   "pre": "LC4_L_1",
+   "post": "DNa_right_2",
+   "weight": 1.4712
+  },
+  {
+   "pre": "LC4_L_2",
+   "post": "DNa_right_0",
+   "weight": 1.2482
+  },
+  {
+   "pre": "LC4_L_2",
+   "post": "DNa_right_1",
+   "weight": 1.2334
+  },
+  {
+   "pre": "LC4_L_2",
+   "post": "DNa_right_2",
+   "weight": 1.5016
+  },
+  {
+   "pre": "LC4_R_0",
+   "post": "DNa_left_0",
+   "weight": 1.5046
+  },
+  {
+   "pre": "LC4_R_0",
+   "post": "DNa_left_1",
+   "weight": 1.559
+  },
+  {
+   "pre": "LC4_R_0",
+   "post": "DNa_left_2",
+   "weight": 1.5667
+  },
+  {
+   "pre": "LC4_R_1",
+   "post": "DNa_left_0",
+   "weight": 1.3866
+  },
+  {
+   "pre": "LC4_R_1",
+   "post": "DNa_left_1",
+   "weight": 1.2721
+  },
+  {
+   "pre": "LC4_R_1",
+   "post": "DNa_left_2",
+   "weight": 1.4022
+  },
+  {
+   "pre": "LC4_R_2",
+   "post": "DNa_left_0",
+   "weight": 1.5062
+  },
+  {
+   "pre": "LC4_R_2",
+   "post": "DNa_left_1",
+   "weight": 1.2526
+  },
+  {
+   "pre": "LC4_R_2",
+   "post": "DNa_left_2",
+   "weight": 1.5631
+  },
+  {
+   "pre": "LPLC2_L_0",
+   "post": "DNa_right_0",
+   "weight": 1.001
+  },
+  {
+   "pre": "LPLC2_L_0",
+   "post": "DNa_right_1",
+   "weight": 0.8524
+  },
+  {
+   "pre": "LPLC2_L_0",
+   "post": "DNa_right_2",
+   "weight": 0.8508
+  },
+  {
+   "pre": "LPLC2_L_1",
+   "post": "DNa_right_0",
+   "weight": 0.9847
+  },
+  {
+   "pre": "LPLC2_L_1",
+   "post": "DNa_right_1",
+   "weight": 0.8052
+  },
+  {
+   "pre": "LPLC2_L_1",
+   "post": "DNa_right_2",
+   "weight": 0.9276
+  },
+  {
+   "pre": "LPLC2_R_0",
+   "post": "DNa_left_0",
+   "weight": 0.9081
+  },
+  {
+   "pre": "LPLC2_R_0",
+   "post": "DNa_left_1",
+   "weight": 0.9558
+  },
+  {
+   "pre": "LPLC2_R_0",
+   "post": "DNa_left_2",
+   "weight": 0.8746
+  },
+  {
+   "pre": "LPLC2_R_1",
+   "post": "DNa_left_0",
+   "weight": 0.966
+  },
+  {
+   "pre": "LPLC2_R_1",
+   "post": "DNa_left_1",
+   "weight": 0.8051
+  },
+  {
+   "pre": "LPLC2_R_1",
+   "post": "DNa_left_2",
+   "weight": 0.828
+  },
+  {
+   "pre": "GF_0",
+   "post": "MBON_approach_0",
+   "weight": -1.508
+  },
+  {
+   "pre": "GF_0",
+   "post": "MBON_approach_1",
+   "weight": -1.3292
+  },
+  {
+   "pre": "GF_0",
+   "post": "MBON_approach_2",
+   "weight": -1.6638
+  },
+  {
+   "pre": "GF_1",
+   "post": "MBON_approach_0",
+   "weight": -1.4266
+  },
+  {
+   "pre": "GF_1",
+   "post": "MBON_approach_1",
+   "weight": -1.579
+  },
+  {
+   "pre": "GF_1",
+   "post": "MBON_approach_2",
+   "weight": -1.3204
+  },
+  {
+   "pre": "GF_0",
+   "post": "DNp09_fwd_0",
+   "weight": 1.0341
+  },
+  {
+   "pre": "GF_0",
+   "post": "DNp09_fwd_1",
+   "weight": 1.0139
+  },
+  {
+   "pre": "GF_0",
+   "post": "DNp09_fwd_2",
+   "weight": 0.9454
+  },
+  {
+   "pre": "GF_1",
+   "post": "DNp09_fwd_0",
+   "weight": 0.999
+  },
+  {
+   "pre": "GF_1",
+   "post": "DNp09_fwd_1",
+   "weight": 1.0778
+  },
+  {
+   "pre": "GF_1",
+   "post": "DNp09_fwd_2",
+   "weight": 0.9315
+  },
+  {
+   "pre": "GF_0",
+   "post": "MDN_escape_0",
+   "weight": 1.1015
+  },
+  {
+   "pre": "GF_0",
+   "post": "MDN_escape_1",
+   "weight": 1.078
+  },
+  {
+   "pre": "GF_1",
+   "post": "MDN_escape_0",
+   "weight": 1.2318
+  },
+  {
+   "pre": "GF_1",
+   "post": "MDN_escape_1",
+   "weight": 1.1971
+  },
+  {
+   "pre": "GF_0",
+   "post": "OA_VPM_0",
+   "weight": 0.5069
+  },
+  {
+   "pre": "GF_0",
+   "post": "OA_VPM_1",
+   "weight": 0.4649
+  },
+  {
+   "pre": "GF_0",
+   "post": "OA_VPM_2",
+   "weight": 0.515
+  },
+  {
+   "pre": "GF_1",
+   "post": "OA_VPM_0",
+   "weight": 0.5526
+  },
+  {
+   "pre": "GF_1",
+   "post": "OA_VPM_1",
+   "weight": 0.4704
+  },
+  {
+   "pre": "GF_1",
+   "post": "OA_VPM_2",
+   "weight": 0.4507
+  },
+  {
+   "pre": "MDN_escape_0",
+   "post": "DNp09_fwd_0",
+   "weight": -0.6451
+  },
+  {
+   "pre": "MDN_escape_0",
+   "post": "DNp09_fwd_1",
+   "weight": -0.6309
+  },
+  {
+   "pre": "MDN_escape_0",
+   "post": "DNp09_fwd_2",
+   "weight": -0.6307
+  },
+  {
+   "pre": "MDN_escape_1",
+   "post": "DNp09_fwd_0",
+   "weight": -0.7602
+  },
+  {
+   "pre": "MDN_escape_1",
+   "post": "DNp09_fwd_1",
+   "weight": -0.7501
+  },
+  {
+   "pre": "MDN_escape_1",
+   "post": "DNp09_fwd_2",
+   "weight": -0.7214
+  },
+  {
+   "pre": "OA_VPM_0",
+   "post": "DNp09_fwd_0",
+   "weight": 0.3321
+  },
+  {
+   "pre": "OA_VPM_0",
+   "post": "DNp09_fwd_1",
+   "weight": 0.2691
+  },
+  {
+   "pre": "OA_VPM_0",
+   "post": "DNp09_fwd_2",
+   "weight": 0.3217
+  },
+  {
+   "pre": "OA_VPM_1",
+   "post": "DNp09_fwd_0",
+   "weight": 0.3099
+  },
+  {
+   "pre": "OA_VPM_1",
+   "post": "DNp09_fwd_1",
+   "weight": 0.3329
+  },
+  {
+   "pre": "OA_VPM_1",
+   "post": "DNp09_fwd_2",
+   "weight": 0.3059
+  },
+  {
+   "pre": "OA_VPM_2",
+   "post": "DNp09_fwd_0",
+   "weight": 0.3041
+  },
+  {
+   "pre": "OA_VPM_2",
+   "post": "DNp09_fwd_1",
+   "weight": 0.3116
+  },
+  {
+   "pre": "OA_VPM_2",
+   "post": "DNp09_fwd_2",
+   "weight": 0.3275
+  },
+  {
+   "pre": "OA_VPM_0",
+   "post": "LC4_L_0",
+   "weight": 0.2332
+  },
+  {
+   "pre": "OA_VPM_0",
+   "post": "LC4_L_1",
+   "weight": 0.2618
+  },
+  {
+   "pre": "OA_VPM_0",
+   "post": "LC4_L_2",
+   "weight": 0.2556
+  },
+  {
+   "pre": "OA_VPM_1",
+   "post": "LC4_L_0",
+   "weight": 0.2721
+  },
+  {
+   "pre": "OA_VPM_1",
+   "post": "LC4_L_1",
+   "weight": 0.2751
+  },
+  {
+   "pre": "OA_VPM_1",
+   "post": "LC4_L_2",
+   "weight": 0.25
+  },
+  {
+   "pre": "OA_VPM_2",
+   "post": "LC4_L_0",
+   "weight": 0.2612
+  },
+  {
+   "pre": "OA_VPM_2",
+   "post": "LC4_L_1",
+   "weight": 0.2231
+  },
+  {
+   "pre": "OA_VPM_2",
+   "post": "LC4_L_2",
+   "weight": 0.2289
+  },
+  {
+   "pre": "OA_VPM_0",
+   "post": "LC4_R_0",
+   "weight": 0.2235
+  },
+  {
+   "pre": "OA_VPM_0",
+   "post": "LC4_R_1",
+   "weight": 0.23
+  },
+  {
+   "pre": "OA_VPM_0",
+   "post": "LC4_R_2",
+   "weight": 0.2607
+  },
+  {
+   "pre": "OA_VPM_1",
+   "post": "LC4_R_0",
+   "weight": 0.271
+  },
+  {
+   "pre": "OA_VPM_1",
+   "post": "LC4_R_1",
+   "weight": 0.2228
+  },
+  {
+   "pre": "OA_VPM_1",
+   "post": "LC4_R_2",
+   "weight": 0.2341
+  },
+  {
+   "pre": "OA_VPM_2",
+   "post": "LC4_R_0",
+   "weight": 0.264
+  },
+  {
+   "pre": "OA_VPM_2",
+   "post": "LC4_R_1",
+   "weight": 0.2319
+  },
+  {
+   "pre": "OA_VPM_2",
+   "post": "LC4_R_2",
+   "weight": 0.2308
+  },
+  {
+   "pre": "EPG_0",
+   "post": "DNa_left_2",
+   "weight": 0.2189
+  },
+  {
+   "pre": "EPG_0",
+   "post": "DNa_left_1",
+   "weight": 0.2087
+  },
+  {
+   "pre": "EPG_1",
+   "post": "DNa_left_0",
+   "weight": 0.2155
+  },
+  {
+   "pre": "EPG_1",
+   "post": "DNa_left_1",
+   "weight": 0.1926
+  },
+  {
+   "pre": "EPG_2",
+   "post": "DNa_left_2",
+   "weight": 0.177
+  },
+  {
+   "pre": "EPG_2",
+   "post": "DNa_left_1",
+   "weight": 0.1794
+  },
+  {
+   "pre": "EPG_3",
+   "post": "DNa_left_1",
+   "weight": 0.1972
+  },
+  {
+   "pre": "EPG_3",
+   "post": "DNa_left_0",
+   "weight": 0.1801
+  },
+  {
+   "pre": "EPG_0",
+   "post": "DNa_right_0",
+   "weight": 0.2157
+  },
+  {
+   "pre": "EPG_0",
+   "post": "DNa_right_1",
+   "weight": 0.2235
+  },
+  {
+   "pre": "EPG_1",
+   "post": "DNa_right_1",
+   "weight": 0.2146
+  },
+  {
+   "pre": "EPG_1",
+   "post": "DNa_right_0",
+   "weight": 0.2014
+  },
+  {
+   "pre": "EPG_2",
+   "post": "DNa_right_0",
+   "weight": 0.1984
+  },
+  {
+   "pre": "EPG_2",
+   "post": "DNa_right_1",
+   "weight": 0.2119
+  },
+  {
+   "pre": "EPG_3",
+   "post": "DNa_right_0",
+   "weight": 0.2224
+  },
+  {
+   "pre": "EPG_3",
+   "post": "DNa_right_1",
+   "weight": 0.181
+  }
+ ]
+}

@@ -1,0 +1,179 @@
+/**
+ * FlyWire-derived whole-brain bridge.
+ *
+ * The large graph stays off the UI thread. This adapter deliberately exposes
+ * the same motor contract as the compact model so the arena can switch brain
+ * backends without knowing how the graph is represented.
+ */
+class FullBrainBridge {
+  constructor(meta) {
+    this.meta = meta;
+    this.worker = new Worker('FullBrainWorker.js');
+    this.groupIds = new Map(meta.groups.map(group => [group.name, group.id]));
+    this.latest = { firedNeurons: 0, groupSpikeCounts: new Uint16Array(meta.group_count), tickCount: 0 };
+    this.activity = new Float32Array(meta.group_count);
+    this.headingAngle = 0;
+    this.hungerLevel = 0;
+    this.threatLevel = 0;
+    this.lastMotor = { left: 0, right: 0, forward: 0, reverse: 0, rest: true };
+    this.ready = false;
+    this._accum = 0;
+    this._workerPromise = new Promise((resolve, reject) => {
+      this._resolveReady = resolve;
+      this._rejectReady = reject;
+    });
+    this.worker.onmessage = event => {
+      const message = event.data;
+      if (message.type === 'ready') {
+        this.ready = true;
+        this.worker.postMessage({ type: 'start' });
+        this._resolveReady(this);
+      } else if (message.type === 'tick') {
+        this.latest = message;
+        for (let i = 0; i < this.activity.length; i++) {
+          this.activity[i] = this.activity[i] * 0.72 + (message.groupSpikeCounts[i] || 0);
+        }
+      } else if (message.type === 'stats') {
+        this.latestStats = message;
+      } else if (message.type === 'error') {
+        this._rejectReady(new Error(message.message));
+      }
+    };
+    this.worker.onerror = error => {
+      this._rejectReady(new Error(error.message || 'FlyWire Worker crashed'));
+    };
+  }
+
+  static async create() {
+    const meta = await fetch('data/neuron_meta.json').then(response => {
+      if (!response.ok) throw new Error(`FlyWire metadata failed (${response.status})`);
+      return response.json();
+    });
+    const brain = new FullBrainBridge(meta);
+    const binary = await fetch('data/connectome.bin.gz').then(response => {
+      if (!response.ok) throw new Error(`FlyWire binary failed (${response.status})`);
+      return response.arrayBuffer();
+    });
+    brain.worker.postMessage({ type: 'init', buffer: binary }, [binary]);
+    return brain._workerPromise;
+  }
+
+  _id(name) { return this.groupIds.get(name); }
+  get neuronCount() { return this.meta.neuron_count; }
+  get edgeCount() { return this.meta.edge_count; }
+  get activeNeuronCount() { return this.latestStats?.activeNeurons || 0; }
+  _activity(name) {
+    const id = this._id(name);
+    return id === undefined ? 0 : this.activity[id];
+  }
+
+  _stimulate(groups, intensities) {
+    const ids = [], values = [];
+    groups.forEach((name, index) => {
+      const id = this._id(name);
+      if (id !== undefined && intensities[index] > 0) {
+        ids.push(id);
+        values.push(intensities[index]);
+      }
+    });
+    if (ids.length) this.worker.postMessage({ type: 'stimulateGroups', groups: ids, intensities: values });
+  }
+
+  update(dt, sense) {
+    if (!this.ready) return null;
+    this.latestSenses = sense;
+    this.headingAngle = sense.headingIndex * Math.PI / 2;
+    this._accum += dt;
+    if (this._accum >= 0.1) {
+      this._accum -= 0.1;
+      const sugar = sense.foodOdor ?? (sense.sugarDist == null ? 0 : Math.max(0, 1 - sense.sugarDist / 12));
+      const threat = sense.dangerOdor ?? (sense.ghostDist == null ? 0 : Math.max(0, 1 - sense.ghostDist / 9));
+      const visualThreat = (sense.threatVisible ?? 0) * threat;
+      const rayThreat = sense.raycastLooming ?? 0;
+      const vibration = sense.vibration ?? 0;
+      const contact = sense.contact ?? 0;
+      this._stimulate(
+        ['OLF_ORN_FOOD', 'OLF_ORN_DANGER', 'VIS_LC', 'MECH_CHORD', 'MECH_BRISTLE', 'ANTENNAL_MECH', 'DRIVE_HUNGER'],
+        [sugar * 1.5, threat * 1.8, Math.max(visualThreat, rayThreat) * 1.4, vibration * 0.8, contact * 1.8, (sense.proprioception?.turning ? 0.4 : 0.12), 0.18]
+      );
+      this._stimulate(['THERMO_WARM', 'THERMO_COOL', 'NOCI'], [
+        Math.max(0, sense.temperature - 0.5) * 0.8,
+        Math.max(0, 0.5 - sense.temperature) * 0.8,
+        Math.max(contact, sense.hazardProximity ?? 0) * 0.7,
+      ]);
+      // Tonic central-complex activity prevents a structurally sparse
+      // subgraph from falling permanently silent between sensory events.
+      this._stimulate(['CX_FC', 'CX_EPG'], [0.22, 0.12]);
+    }
+    // FAFB v783 is brain-only, so many VNC leg groups are empty. Use the
+    // populated descending/neck motor proxies exposed by the metadata rather
+    // than silently returning zero for absent VNC populations.
+    const walk = this._activity('GNG_DESC')
+      + this._activity('VNC_CPG')
+      + this._activity('MN_HEAD');
+    const turn = this._activity('CX_EPG') + this._activity('CX_PFN');
+    const flee = this._activity('DN_STARTLE')
+      + this._activity('MECH_JO')
+      + this._activity('OLF_ORN_DANGER');
+    const reverse = this._activity('GUS_GRN_BITTER');
+    // The aggregated FlyWire artifact does not expose left/right motor
+    // labels. Equal turn scores previously made the arena repeatedly choose
+    // a turn at every junction. Preserve exploratory turn energy, but give
+    // symmetric activity a forward-biased motor output so the fly traverses
+    // the map instead of spinning in place.
+    const threatBearing = this.latestSenses?.ghostBearing || 0;
+    const currentThreat = this.latestSenses?.ghostDist == null ? 0 : Math.max(0, 1 - this.latestSenses.ghostDist / 9);
+    const threat = currentThreat > 0.08 ? Math.max(this.threatLevel, flee / 8) : 0;
+    const left = turn * 0.08 + Math.max(0, threatBearing) * threat * 1.8;
+    const right = turn * 0.08 + Math.max(0, -threatBearing) * threat * 1.8;
+    const forward = walk + turn * 0.55;
+    const reverseDrive = reverse + threat * 2.4;
+    const motor = { left, right, forward, reverse: reverseDrive, rest: forward < 0.2 && reverseDrive < 0.22 && threat < 0.16 };
+    this.lastMotor = motor;
+    return motor;
+  }
+
+  get state() {
+    const hungerRaw = Math.min(1, this._activity('DRIVE_HUNGER') / 8);
+    const fearRaw = Math.min(1, (this._activity('DRIVE_FEAR')
+      + this._activity('DN_STARTLE')
+      + this._activity('MECH_JO')
+      + this._activity('OLF_ORN_DANGER')) / 8);
+    const currentThreat = this.latestSenses?.ghostDist == null ? 0 : Math.max(0, 1 - this.latestSenses.ghostDist / 9);
+    const gatedFear = currentThreat > 0.08 ? fearRaw : 0;
+    this.hungerLevel += (hungerRaw - this.hungerLevel) * 0.08;
+    this.threatLevel += (gatedFear - this.threatLevel) * (gatedFear > 0 ? 0.16 : 0.32);
+    const hunger = this.hungerLevel;
+    const fear = this.threatLevel;
+    const dopamine = this._activity('MB_DAN_REW');
+    const arousal = Math.min(1, this.activity.reduce((sum, value) => sum + value, 0) / 1600);
+    const drives = {
+      foraging: Math.min(1, (hunger + this._activity('OLF_ORN_FOOD') + this._activity('MB_MBON_APP')) / 12),
+      escape: Math.min(1, fear / 12),
+      explore: Math.min(1, (this._activity('CX_FC') + this._activity('CX_PFN')) / 12),
+      rest: Math.min(1, this._activity('DRIVE_FATIGUE') / 8),
+    };
+    return {
+      headingAngle: this.headingAngle, npfLevel: hunger,
+      dopamineTransient: Math.min(1, dopamine / 5), panicLevel: fear,
+      octopamineLevel: fear, arousalLevel: arousal,
+      ppl1Transient: Math.min(1, this._activity('MB_DAN_PUN') / 5),
+      giantFiberFiring: fear > 0.45, stunned: false, disgusted: false, exhausted: false,
+      behaviorState: fear > 0.28 ? 'ESCAPE' : hunger > 0.36 ? 'FORAGING' : this.lastMotor.rest ? 'RESTING' : 'EXPLORING',
+      motorAction: this.lastMotor,
+      senses: this.latestSenses || {},
+      drives,
+    };
+  }
+
+  _reward(value) { this.worker.postMessage({ type: 'reward', value }); }
+  onPelletEaten(isEnergizer) {
+    this._reward(isEnergizer ? 1 : 0.35);
+    this._stimulate(['GUS_GRN_SWEET', 'MB_DAN_REW'], [isEnergizer ? 1.4 : 0.35, isEnergizer ? 1.2 : 0.25]);
+  }
+
+  onHazardEaten() { this._reward(-0.8); this._stimulate(['GUS_GRN_BITTER', 'MB_DAN_PUN'], [1.4, 1]); }
+  onGhostCaught() { this._reward(1); this._stimulate(['MB_DAN_REW', 'MB_MBON_APP'], [2.4, 1.5]); }
+  onCaught() { this._reward(-1); this._stimulate(['MECH_BRISTLE', 'DRIVE_FEAR', 'DN_STARTLE'], [1, 1, 1]); }
+  isGiantFiberFiring() { return this.state.giantFiberFiring; }
+}
