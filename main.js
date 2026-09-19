@@ -22,7 +22,7 @@
   let noteIndex = 0;
   const BEAT_MS_BASE = 60000; // divided by bpm to get ms per beat
 
-  const audio = { context: null, master: null, timer: null, playing: false };
+  const audio = { context: null, master: null, timer: null, playing: false, volume: .8 };
   let brain = null;
   let brainBackend = 'CONNECTOME LIF';
   const brainReady = FullBrainBridge.create().then(value => {
@@ -66,7 +66,7 @@
   function setupAudio() {
     audio.context ||= new (window.AudioContext || window.webkitAudioContext)();
     audio.master ||= audio.context.createGain();
-    audio.master.gain.value = .8;
+    audio.master.gain.value = audio.volume;
     audio.master.connect(audio.context.destination);
     if (audio.context.state === 'suspended') audio.context.resume();
   }
@@ -260,6 +260,10 @@
   }
 
   $('play-track').addEventListener('click', () => audio.playing ? stopTrack() : startTrack());
+  $('volume').addEventListener('input', e => {
+    audio.volume = Number(e.target.value) / 100;
+    if (audio.master) audio.master.gain.value = audio.volume;
+  });
   $('song-picker').addEventListener('change', e => {
     track = Number(e.target.value);
     noteIndex = 0;

@@ -45,6 +45,10 @@ button{font:inherit;cursor:pointer;background:none}
 .play:hover{border-color:var(--amber);color:var(--amber)}
 #status-text{margin:0;flex:1;font:11px "DM Mono",monospace;color:var(--muted);letter-spacing:.03em}
 .tempo{font:10px "DM Mono",monospace;color:var(--amber);letter-spacing:.06em;padding:5px 10px;border:1px solid var(--line);border-radius:20px}
+.volume{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px;flex:none}
+.volume input[type="range"]{-webkit-appearance:none;appearance:none;width:84px;height:3px;border-radius:2px;background:var(--line-strong);outline:none}
+.volume input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:11px;height:11px;border-radius:50%;background:var(--amber);cursor:pointer}
+.volume input[type="range"]::-moz-range-thumb{width:11px;height:11px;border:0;border-radius:50%;background:var(--amber);cursor:pointer}
 
 .panel-hero{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px 22px;position:relative;overflow:hidden}
 .panel-hero:after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at var(--pulse-x,50%) 40%,#d9a34f22,transparent 60%);opacity:var(--pulse,0);transition:opacity .25s ease}
