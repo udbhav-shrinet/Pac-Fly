@@ -3,43 +3,404 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#1c1714">
-  <title>Virtual Fly Brain Piano Cafe</title>
-  <meta name="description" content="A quiet cafe piano room for the virtual fly brain.">
+  <meta name="theme-color" content="#0d0a08">
+  <title>Drosophila Synaptic Cafe — Whole-Brain Connectome &amp; Neural Piano Simulator</title>
+  <meta name="description" content="A whole-brain connectome simulation of Drosophila melanogaster playing classical piano in a cozy high-tech lofi cafe.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <main class="cafe">
+  <div class="app-layout">
+    <!-- Topbar Header -->
     <header class="topbar">
-      <div class="brand"><span class="brand-mark">☕</span><div><h1>VIRTUAL FLY <b>CAFE</b></h1><p>PIANO TRAINER <i>• OPEN</i></p></div></div>
-      <div class="clock" id="clock">00:00</div>
+      <div class="brand">
+        <div class="brand-icon">
+          <span class="coffee-cup">☕</span>
+          <span class="synapse-sparkle">✦</span>
+        </div>
+        <div class="brand-text">
+          <h1>DROSOPHILA <b>SYNAPTIC CAFE</b></h1>
+          <p>WHOLE-BRAIN CONNECTOME &bull; <i>NEURAL PIANO SIMULATOR</i></p>
+        </div>
+      </div>
+      <div class="topbar-status">
+        <div class="status-badge backend-badge" id="brain-backend-badge">CONNECTOME LIF (66)</div>
+        <div class="status-badge state-badge" id="behavior-state-badge" data-state="ALERT">ALERT</div>
+        <div class="status-badge clock-badge" id="clock">00:00:00</div>
+      </div>
     </header>
 
-    <section class="room" aria-label="Lofi piano room">
-      <div class="string-lights">•　•　•　•　•　•　•　•</div>
-      <div class="window"><span>✦</span><i></i><i></i><i></i></div>
-      <div class="shelf"><b>BOOKS</b><i></i><i></i><i></i><small>✽</small></div>
-      <div class="plant">♧</div>
-      <div class="steam">⌁</div><div class="mug">☕</div>
-      <div class="piano" aria-label="Upright piano">
-        <div class="piano-lid"></div><div class="piano-front"><div class="keys" id="keys"></div></div><div class="piano-pedals">◌　◌</div>
+    <!-- Ambient Lofi Cafe Piano Room -->
+    <section class="cafe-room" aria-label="Lofi Neural Piano Room">
+      <!-- Ambient Room Scenery -->
+      <div class="string-lights">
+        <span class="bulb"></span><span class="bulb"></span><span class="bulb"></span><span class="bulb"></span>
+        <span class="bulb"></span><span class="bulb"></span><span class="bulb"></span><span class="bulb"></span>
+        <span class="bulb"></span><span class="bulb"></span><span class="bulb"></span><span class="bulb"></span>
       </div>
-      <div class="stool"><div class="fly" id="fly" title="Virtual fly performer"><span class="fly-body"></span><i></i><i></i><b></b><b></b></div></div>
-      <div class="wires"></div>
-      <div class="room-caption"><span>NEURAL PIANO ROOM</span><small>soft light / quiet night / live connectome</small></div>
+
+      <div class="cafe-window">
+        <div class="night-sky">
+          <div class="moon"></div>
+          <div class="stars">
+            <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+          </div>
+          <div class="shooting-star"></div>
+        </div>
+        <div class="window-frame"></div>
+      </div>
+
+      <div class="bookshelf">
+        <div class="shelf-label">CONNECTOMICS</div>
+        <div class="books">
+          <span class="book b1"></span><span class="book b2"></span>
+          <span class="book b3"></span><span class="book b4"></span>
+        </div>
+        <div class="warm-lamp">🏮</div>
+      </div>
+
+      <div class="cafe-counter">
+        <div class="coffee-mug-station">
+          <div class="steam-container">
+            <span class="steam-particle s1"></span>
+            <span class="steam-particle s2"></span>
+            <span class="steam-particle s3"></span>
+          </div>
+          <div class="ceramic-mug">☕</div>
+        </div>
+        <div class="potted-plant">🪴</div>
+      </div>
+
+      <!-- Upright Cafe Grand Piano -->
+      <div class="piano-assembly" aria-label="Upright Neural Piano">
+        <div class="piano-top-lid"></div>
+        <div class="piano-body">
+          <div class="music-stand">
+            <div class="sheet-music">
+              <span class="clef">𝄞</span>
+              <span class="stave-notes">𝅘𝅥𝅯 𝅘𝅥 𝅘𝅥𝅯 𝅘𝅥</span>
+            </div>
+          </div>
+          <div class="piano-keyboard">
+            <div class="keys" id="keys"></div>
+          </div>
+        </div>
+        <div class="piano-pedals">
+          <span class="pedal left-pedal"></span>
+          <span class="pedal right-pedal"></span>
+        </div>
+      </div>
+
+      <!-- Virtual Fly Performer with BCI Headset -->
+      <div class="fly-performer-container">
+        <div class="fly-stool"></div>
+        <div class="fly" id="fly" title="Drosophila melanogaster performer">
+          <div class="fly-head">
+            <span class="compound-eye left"></span>
+            <span class="compound-eye right"></span>
+            <div class="neural-headset">
+              <span class="electrode e1"></span>
+              <span class="electrode e2"></span>
+              <span class="bci-glow"></span>
+            </div>
+          </div>
+          <div class="fly-thorax"></div>
+          <div class="fly-abdomen"></div>
+          <div class="fly-wing left-wing"></div>
+          <div class="fly-wing right-wing"></div>
+          <div class="fly-legs">
+            <span class="leg leg-fl"></span><span class="leg leg-fr"></span>
+            <span class="leg leg-ml"></span><span class="leg leg-mr"></span>
+            <span class="leg leg-hl"></span><span class="leg leg-hr"></span>
+          </div>
+        </div>
+        <!-- Fiber Optic Synaptic Cables -->
+        <div class="synaptic-cables">
+          <svg class="cable-svg" viewBox="0 0 160 100">
+            <path class="cable-wire w1" d="M20,20 Q60,80 140,40" />
+            <path class="cable-wire w2" d="M25,25 Q70,90 145,50" />
+          </svg>
+        </div>
+      </div>
+
+      <div class="room-overlay-banner">
+        <span class="banner-title">LIVE DROSOPHILA PERFORMANCE</span>
+        <small class="banner-sub">Biological LIF Spiking &bull; GCaMP6f Calcium Imaging &bull; Synaptic Plasticity</small>
+      </div>
     </section>
 
-    <section class="console">
-      <div class="now-playing"><div><span class="eyebrow">NOW PLAYING</span><h2 id="track-name">Ode to Joy <em>— Beethoven</em></h2><p id="track-note">The fly hears the next target through its sensory input</p></div><button id="play-track" class="play" type="button" aria-label="Start fly training">▶</button></div>
-      <div class="controls"><label class="song-picker">MELODY <select id="song-picker" aria-label="Choose a melody"></select></label><span class="learning-badge" id="learning-badge">EXPLORATION 100%</span><span class="trial-count" id="trial-count">TRIAL 000</span></div>
-      <div class="visuals"><div class="wave-card"><div class="card-title"><span>DOPAMINE / REWARD</span><b id="dopamine-value">32%</b></div><canvas id="wave" width="600" height="130"></canvas></div><div class="neural-card"><div class="card-title"><span>NEURAL ACTIVITY</span><b id="neural-value">LIVE</b></div><canvas id="neural" width="360" height="130"></canvas></div></div>
-      <div class="bio-strip"><div><span>EMOTION</span><b id="emotion-value">CURIOUS</b></div><div><span>HORMONES</span><small id="hormone-value">DA 32 · 5-HT 48 · OA 20</small></div><div><span>NEURONS</span><small id="neuron-value">24 / 24 ACTIVE</small></div></div>
-      <div class="status"><span><i class="live"></i> VIRTUAL FLY POLICY · MODELLED</span><span id="status-text">press play: the fly will learn</span><span id="performer-status">TARGET KEY READY</span></div>
+    <!-- Master Track Console Bar -->
+    <section class="track-console-bar">
+      <div class="track-info">
+        <span class="eyebrow">CURRENT REPERTOIRE</span>
+        <h2 id="track-name">Ode to Joy <em>— L. van Beethoven</em></h2>
+        <p id="track-desc">An die Freude — simple step-wise melody ideal for initial synaptic weight conditioning</p>
+      </div>
+
+      <div class="track-actions">
+        <div class="song-selector-wrap">
+          <label for="song-picker">MELODY:</label>
+          <select id="song-picker" aria-label="Select musical piece"></select>
+        </div>
+        <div class="metric-pill" id="track-difficulty">★☆☆</div>
+        <div class="metric-pill" id="learning-badge">EXPLORATION 5%</div>
+        <div class="metric-pill gold" id="trial-count">TRIAL 001</div>
+        <div class="metric-pill progress-pill" id="song-progress-pct">0%</div>
+        <button id="play-track" class="btn-play" type="button" aria-label="Play or Pause fly performance">
+          ▶ PLAY
+        </button>
+      </div>
     </section>
-  </main>
-  <script src="Connectome.js"></script><script src="FlyNeuralEngine.js"></script><script src="FullBrainBridge.js"></script><script src="main.js"></script>
+
+    <!-- Main Dual-Deck High-Tech Architecture -->
+    <main class="dashboard-grid">
+      <!-- Left Column: Interactive Connectome Visualizer -->
+      <section class="card connectome-card">
+        <div class="card-header">
+          <div class="card-title-group">
+            <span class="card-icon">🧠</span>
+            <div>
+              <h3>CONNECTOME CIRCUIT VISUALIZER</h3>
+              <p>Drosophila Whole-Brain Neuropils &amp; Spiking Synaptic Graph</p>
+            </div>
+          </div>
+          <div class="view-controls">
+            <div class="btn-group">
+              <button class="btn-toggle active" id="view-2d-btn" type="button">2D ANATOMICAL</button>
+              <button class="btn-toggle" id="view-3d-btn" type="button">3D TOPOLOGICAL</button>
+            </div>
+            <button class="btn-icon active" id="toggle-particles-btn" title="Toggle Synaptic Particles" aria-label="Toggle Particles">⚡ PARTICLES</button>
+            <button class="btn-icon" id="reset-view-btn" title="Reset Pan/Zoom View" aria-label="Reset View">⟲ RESET</button>
+          </div>
+        </div>
+
+        <!-- Neuropil Filter Pills -->
+        <div class="neuropil-filters">
+          <button class="filter-pill active" data-filter="all" type="button">ALL CIRCUITS</button>
+          <button class="filter-pill" data-filter="sensory" type="button">SENSORY (ORN/LC4)</button>
+          <button class="filter-pill" data-filter="mb" type="button">MUSHROOM BODY (KC/MBON)</button>
+          <button class="filter-pill" data-filter="cx" type="button">CENTRAL COMPLEX (EPG)</button>
+          <button class="filter-pill" data-filter="dan" type="button">NEUROMODULATORS (DA/OA)</button>
+          <button class="filter-pill" data-filter="motor" type="button">MOTOR (DNa/DNp/GF)</button>
+        </div>
+
+        <!-- Interactive Canvas Stage -->
+        <div class="canvas-stage">
+          <canvas id="connectome-canvas" width="700" height="420"></canvas>
+          <div class="hover-tooltip" id="connectome-tooltip"></div>
+          <div class="canvas-help-hint">🖱 Drag to Pan/Orbit &bull; Scroll to Zoom &bull; Hover for Neuropil Inspection</div>
+        </div>
+
+        <!-- Visualizer Footer Strip -->
+        <div class="circuit-legend-strip">
+          <div class="legend-item"><span class="legend-dot" style="background:#72c49c;"></span> Sensory</div>
+          <div class="legend-item"><span class="legend-dot" style="background:#a6e3c5;"></span> Kenyon Cells</div>
+          <div class="legend-item"><span class="legend-dot" style="background:#f7d070;"></span> EPG Compass</div>
+          <div class="legend-item"><span class="legend-dot" style="background:#00f0ff;"></span> PAM (Reward DA)</div>
+          <div class="legend-item"><span class="legend-dot" style="background:#ef4444;"></span> PPL1 / Giant Fiber</div>
+          <div class="legend-item"><span class="legend-dot" style="background:#38bdf8;"></span> Motor DNa</div>
+        </div>
+      </section>
+
+      <!-- Right Column: Multi-Channel Telemetry Dashboard -->
+      <section class="card telemetry-card">
+        <div class="card-header">
+          <div class="card-title-group">
+            <span class="card-icon">📊</span>
+            <div>
+              <h3>BIOMETRIC &amp; NEURAL TELEMETRY</h3>
+              <p>Real-Time Multi-Unit Spike Oscilloscope &amp; Attractor Phase Space</p>
+            </div>
+          </div>
+          <span class="live-pulse-indicator"><i class="pulse-dot"></i> STREAMING</span>
+        </div>
+
+        <!-- KPI Stat Grid -->
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <span class="kpi-label">SPIKE RATE</span>
+            <b class="kpi-value cyan" id="kpi-firing-rate">120 Hz</b>
+            <small class="kpi-sub">Network Flux</small>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-label">DOPAMINE (DA)</span>
+            <b class="kpi-value gold" id="kpi-dopamine">78%</b>
+            <small class="kpi-sub">PAM Reward</small>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-label">EPG HEADING</span>
+            <b class="kpi-value emerald" id="kpi-heading">135°</b>
+            <small class="kpi-sub">Compass Bump</small>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-label">ACCURACY</span>
+            <b class="kpi-value sage" id="kpi-accuracy">94.5%</b>
+            <small class="kpi-sub">Hit Precision</small>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-label">PLASTICITY</span>
+            <b class="kpi-value purple" id="kpi-plasticity">ΔW +0.042</b>
+            <small class="kpi-sub">STDP Synapse</small>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-label">CALCIUM ΔF/F</span>
+            <b class="kpi-value orange" id="kpi-calcium">42%</b>
+            <small class="kpi-sub">Global Arousal</small>
+          </div>
+        </div>
+
+        <!-- Telemetry Oscilloscopes -->
+        <div class="telemetry-graphs">
+          <!-- Multi-Unit Spike Raster -->
+          <div class="graph-box">
+            <div class="graph-header">
+              <span>MULTI-CHANNEL SPIKE RASTER</span>
+              <small>6 Neuropil Channels &bull; Real-Time Spike Trains</small>
+            </div>
+            <canvas id="raster-canvas" width="480" height="110"></canvas>
+          </div>
+
+          <!-- Neuro-Chemical Time-Series & Phase-Space Row -->
+          <div class="graph-split-row">
+            <div class="graph-box flex-2">
+              <div class="graph-header">
+                <span>NEURO-CHEMICAL DYNAMICS</span>
+                <small>DA &bull; 5-HT &bull; OA &bull; NPF</small>
+              </div>
+              <canvas id="neurochem-canvas" width="300" height="110"></canvas>
+            </div>
+            <div class="graph-box flex-1">
+              <div class="graph-header">
+                <span>ATTRACTOR PHASE SPACE</span>
+                <small>Escape vs Explore</small>
+              </div>
+              <canvas id="phasespace-canvas" width="160" height="110"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live Engine Status Readout -->
+        <div class="engine-status-bar">
+          <span class="status-left"><i class="dot live-green"></i> <span id="status-text">STANDBY &bull; AWAITING STIMULUS</span></span>
+          <span class="status-right">NEURAL DYNAMICS: <b>LEAKY INTEGRATE-AND-FIRE (LIF)</b></span>
+        </div>
+      </section>
+    </main>
+
+    <!-- Bottom Interactive Control Deck & Synthesizer Studio -->
+    <section class="card control-deck-card">
+      <div class="deck-grid">
+        <!-- Section 1: Micro-Stimulus Injection Deck -->
+        <div class="deck-section">
+          <div class="section-title">
+            <span class="sec-icon">⚡</span>
+            <h4>MICRO-STIMULUS INJECTION</h4>
+          </div>
+          <p class="section-desc">Inject sensory currents or trigger neuromodulatory bursts directly into Drosophila circuits:</p>
+          <div class="stimulus-buttons">
+            <button class="stim-btn stim-sugar" id="stim-sugar" type="button">
+              <span class="stim-icon">🍬</span>
+              <div class="stim-text">
+                <b>SUGAR REWARD</b>
+                <small>+PAM DA &bull; Satiation</small>
+              </div>
+            </button>
+            <button class="stim-btn stim-bitter" id="stim-bitter" type="button">
+              <span class="stim-icon">🌿</span>
+              <div class="stim-text">
+                <b>BITTER QUININE</b>
+                <small>+PPL1 DAN &bull; Disgust</small>
+              </div>
+            </button>
+            <button class="stim-btn stim-threat" id="stim-threat" type="button">
+              <span class="stim-icon">🦅</span>
+              <div class="stim-text">
+                <b>LOOMING THREAT</b>
+                <small>+LC4/LPLC2 &bull; GF Panic</small>
+              </div>
+            </button>
+            <button class="stim-btn stim-optogenetics" id="stim-optogenetics" type="button">
+              <span class="stim-icon">🔴</span>
+              <div class="stim-text">
+                <b>OPTOGENETICS</b>
+                <small>CsChrimson KC Flash</small>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        <!-- Section 2: Audio Synthesizer Studio -->
+        <div class="deck-section">
+          <div class="section-title">
+            <span class="sec-icon">🎹</span>
+            <h4>INSTRUMENT SYNTHESIZER</h4>
+          </div>
+          <p class="section-desc">Select Web Audio physical models and tune acoustic reverberation:</p>
+          <div class="instrument-selector">
+            <button class="inst-btn active" data-instrument="grand-piano" type="button">CONCERT GRAND</button>
+            <button class="inst-btn" data-instrument="rhodes" type="button">LOFI RHODES</button>
+            <button class="inst-btn" data-instrument="neuro-synth" type="button">80s NEURO-SYNTH</button>
+            <button class="inst-btn" data-instrument="kalimba" type="button">CAFE KALIMBA</button>
+          </div>
+          <div class="sliders-row">
+            <div class="slider-group">
+              <label for="tempo-slider">TEMPO <b id="tempo-val">1.0x</b></label>
+              <input type="range" id="tempo-slider" min="0.5" max="3.0" step="0.1" value="1.0">
+            </div>
+            <div class="slider-group">
+              <label for="volume-slider">VOLUME <b id="volume-val">70%</b></label>
+              <input type="range" id="volume-slider" min="0.0" max="1.0" step="0.05" value="0.7">
+            </div>
+            <div class="slider-group">
+              <label for="reverb-slider">REVERB <b id="reverb-val">35%</b></label>
+              <input type="range" id="reverb-slider" min="0.0" max="1.0" step="0.05" value="0.35">
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 3: Training Mode & Autonomy -->
+        <div class="deck-section">
+          <div class="section-title">
+            <span class="sec-icon">⚙</span>
+            <h4>AUTONOMOUS RL POLICY</h4>
+          </div>
+          <p class="section-desc">Enable self-driving neural reinforcement learning or manual step control:</p>
+          <div class="mode-toggle-box">
+            <label class="switch-container">
+              <input type="checkbox" id="autonomous-toggle" checked>
+              <span class="slider-switch"></span>
+            </label>
+            <span class="mode-status-text" id="autonomous-label">AUTONOMOUS (RL)</span>
+          </div>
+          <div class="keyboard-guide">
+            <small>⌨ Type keys <b>A S D F G H J K</b> or <b>W E T Y U O P</b> to play the piano manually!</small>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer Provenance & Scientific Citation -->
+    <footer class="cafe-footer">
+      <div class="footer-left">
+        <span>&copy; Drosophila Synaptic Cafe &bull; Whole-Brain Connectome Project</span>
+        <small>Neural architecture based on FlyWire FAFB v783 and Janelia Hemibrain connectome datasets.</small>
+      </div>
+      <div class="footer-right">
+        <a href="https://codex.flywire.ai" target="_blank" rel="noopener">FlyWire Codex</a> &bull;
+        <a href="https://neuprint.janelia.org" target="_blank" rel="noopener">Janelia neuPrint</a>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Scripts -->
+  <script src="NeuroAudio.js"></script>
+  <script src="Connectome.js"></script>
+  <script src="FlyNeuralEngine.js"></script>
+  <script src="FullBrainBridge.js"></script>
+  <script src="ConnectomeVisualizer.js"></script>
+  <script src="TelemetryDashboard.js"></script>
+  <script src="main.js"></script>
 </body>
 </html>

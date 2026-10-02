@@ -20,6 +20,7 @@ class Connectome {
   /** @param {{meta:object, neurons:Array, synapses:Array}} doc */
   constructor(doc) {
     this.meta = doc.meta;
+    this.synapses = doc.synapses || [];
     const neurons = doc.neurons;
     const n = neurons.length;
 
