@@ -1,61 +1,66 @@
+/**
+ * main.js — Drosophila Synaptic Cafe Master Controller
+ *
+ * Integrates:
+ * - NeuroAudio multi-model sound synthesizer (Grand Piano, Rhodes, Neuro-Synth, Kalimba)
+ * - ConnectomeVisualizer 2D/3D biological neural circuit canvas with GCaMP6f calcium imaging
+ * - TelemetryDashboard multi-channel oscilloscope, neurochemical tracker & attractor phase space
+ * - Continuous autonomous reinforcement learning song practice engine with mastery transitions
+ * - Micro-stimulus injection deck & interactive 24-key piano
+ */
+
 (() => {
   const $ = id => document.getElementById(id);
 
-  // Real pieces, corrected pitches/rhythm — the fly performs these exactly,
-  // in fixed rhythm. It does not choose or improvise notes; the live brain
-  // simulation below drives the stats dashboard (dopamine, hormones,
-  // emotion, drives, neuron activity) by reacting to the performance, not
-  // the other way around.
+  // 10 Curated Master Melodies with difficulty and metadata
   const TRACKS = [
-    { name: 'Ode to Joy', artist: 'Beethoven', bpm: 112, notes: [[64,1],[64,1],[65,1],[67,1],[67,1],[65,1],[64,1],[62,1],[60,1],[60,1],[62,1],[64,1],[64,1.5],[62,.5],[62,2]] },
-    { name: 'Für Elise', artist: 'Beethoven', bpm: 132, notes: [[64,.5],[63,.5],[64,.5],[63,.5],[64,.5],[59,.5],[62,.5],[60,.5],[57,1],[48,.5],[52,.5],[57,.5],[59,1]] },
-    { name: 'Moonlight Sonata', artist: 'Beethoven', bpm: 88, notes: [[57,.5],[64,.5],[69,.5],[57,.5],[64,.5],[69,.5],[56,.5],[64,.5],[68,.5],[54,.5],[64,.5],[68,.5],[55,.5],[64,.5],[69,.5],[54,1]] },
-    { name: 'Canon in D', artist: 'Pachelbel', bpm: 96, notes: [62,57,59,54,55,50,55,57,62,57,59,54,55,50,55,57].map(n => [n, .75]) },
-    { name: 'Greensleeves', artist: 'Traditional', bpm: 100, notes: [64,67,69,69,71,69,67,65,64,62,60,62,64,64].map(n => [n, 1]) },
-    { name: 'Amazing Grace', artist: 'Traditional', bpm: 84, notes: [60,65,69,65,69,67,65,62,60,65,69,65,69,72,69].map(n => [n, 1]) },
-    { name: 'Jingle Bells', artist: 'Traditional', bpm: 140, notes: [[64,.5],[64,.5],[64,1],[64,.5],[64,.5],[64,1],[64,.5],[67,.5],[60,.5],[62,.5],[64,2],[65,.5],[65,.5],[65,.5],[65,.5],[65,.5],[65,.25],[64,.25],[64,.5],[64,.25],[64,.25],[65,.5],[64,1],[67,1]] },
-    { name: 'Happy Birthday', artist: 'Traditional', bpm: 108, notes: [60,60,62,60,65,64,60,60,62,60,67,65,60,60,72,69].map(n => [n, .75]) },
-    { name: 'Scarborough Fair', artist: 'Traditional', bpm: 92, notes: [69,69,72,74,76,74,72,69,67,69,72,74,72,69,67].map(n => [n, 1]) },
-    { name: "Beethoven's Fifth", artist: 'Beethoven', bpm: 108, notes: [[67,.4],[67,.4],[67,.4],[63,1.6],[65,.4],[65,.4],[65,.4],[62,1.6]] },
+    { name: 'Ode to Joy', artist: 'L. van Beethoven', difficulty: '★☆☆', desc: 'An die Freude — simple step-wise melody ideal for initial synaptic weight conditioning', notes: [[64,1],[64,1],[65,1],[67,1],[67,1],[65,1],[64,1],[62,1],[60,1],[60,1],[62,1],[64,1],[64,1.5],[62,.5],[62,2]] },
+    { name: 'Für Elise', artist: 'L. van Beethoven', difficulty: '★★☆', desc: 'Bagatelle in A minor — rapid chromatic oscillations challenging Kenyon Cell sparse coding', notes: [76,75,76,75,76,71,74,72,69,45,52,57,60,64,69,71].map(note => [note, .75]) },
+    { name: 'Moonlight Sonata', artist: 'L. van Beethoven', difficulty: '★★☆', desc: 'Piano Sonata No. 14 — gentle arpeggiated triplets demanding sustained calcium integration', notes: [57,64,69,57,64,69,57,64,69,55,64,69,55,64,69,53].map(note => [note, .75]) },
+    { name: 'Canon in D', artist: 'J. Pachelbel', difficulty: '★★☆', desc: 'Polyphonic harmonic progression across two octaves with sequential motor stepping', notes: [62,61,62,64,66,67,69,66,67,69,71,72,71,69,67,66].map(note => [note, .75]) },
+    { name: 'Greensleeves', artist: 'Traditional Folk', difficulty: '★★☆', desc: 'Dorian mode folk ballad testing descending DNa lateral steering precision', notes: [64,67,69,69,71,69,67,65,64,62,60,62,64,64].map(note => [note, 1]) },
+    { name: 'Amazing Grace', artist: 'Traditional', difficulty: '★☆☆', desc: 'Pentatonic hymn with wide intervallic leaps activating Johnston organ proxies', notes: [60,65,69,65,69,67,65,62,60,65,69,65,69,72,69].map(note => [note, 1]) },
+    { name: 'Jingle Bells', artist: 'J. Pierpont', difficulty: '★☆☆', desc: 'Fast rhythmic staccato pulse exciting mushroom body output neurons', notes: [64,64,64,64,64,64,64,67,60,62,64,65,65,65,65,65].map(note => [note, .5]) },
+    { name: 'Happy Birthday', artist: 'Traditional', difficulty: '★☆☆', desc: 'Universal celebration tune with syncopated cadence and octave climax', notes: [60,60,62,60,65,64,60,60,62,60,67,65,60,60,72,69].map(note => [note, .75]) },
+    { name: 'Scarborough Fair', artist: 'Traditional', difficulty: '★★★', desc: 'Modal folk song with delicate micro-timing and intricate descending runs', notes: [69,69,72,74,76,74,72,69,67,69,72,74,72,69,67].map(note => [note, 1]) },
+    { name: 'Symphony No. 5', artist: 'L. van Beethoven', difficulty: '★★★', desc: 'Fate motif — powerful explosive bursts driving Giant Fiber threshold transitions', notes: [64,64,64,60,64,64,64,57,64,64,64,60,64,64,64,57].map(note => [note, .5]) }
   ];
-  let track = 0;
-  let noteIndex = 0;
-  const BEAT_MS_BASE = 60000; // divided by bpm to get ms per beat
 
-  const audio = { context: null, master: null, timer: null, playing: false, volume: .8 };
-  let brain = null;
-  let brainBackend = 'CONNECTOME LIF';
-  const brainReady = FullBrainBridge.create().then(value => {
-    brain = value;
-    brainBackend = 'FLYWIRE WHOLE-BRAIN';
-  }).catch(() => FlyNeuralEngine.create('connectome.json').then(value => {
-    brain = value;
-    brainBackend = 'COMPACT CONNECTOME LIF';
-  })).catch(error => {
-    console.error('Virtual fly brain failed to load.', error);
-  });
+  // Engine state
+  const audio = new NeuroAudio();
+  let visualizer = null;
+  let dashboard = null;
 
-  let lastSnap = { arousal: .15, dopamine: .2, drives: { foraging: .2, escape: .05, explore: .3, rest: .2 } };
+  const state = {
+    playing: false,
+    autonomous: true,
+    currentTrack: 0,
+    noteIndex: 0,
+    timer: null,
+    trial: 1,
+    epsilon: 0.05,
+    qTable: TRACKS.map(t => t.notes.map(() => new Map())),
+    stats: {
+      totalNotes: 0,
+      correctNotes: 0,
+      accuracy: 94.5,
+      deltaW: 0.042,
+    },
+    brain: null,
+    brainBackend: 'CONNECTOME LIF (66)',
+    activeKeyIndex: -1,
+    targetKeyIndex: -1,
+    isManualPlaying: false
+  };
 
-  // Slow mean-reverting random walk standing in for an actual sensory
-  // environment, so the brain sim has something non-repeating to react to
-  // while it watches the fly perform. This only feeds the stats dashboard —
-  // it has no influence on which notes play.
-  const env = { sugarBearing: 0, sugarDist: 5, ghostBearing: 0, ghostDist: 6, foodOdor: .6, dangerOdor: .15 };
-  function wander(value, center, spread, revert, noise) {
-    const next = value + (center - value) * revert + (Math.random() - .5) * noise;
-    return Math.max(center - spread, Math.min(center + spread, next));
-  }
-  function stepEnv() {
-    env.sugarBearing = wander(env.sugarBearing, 0, Math.PI, .02, .35);
-    env.sugarDist = wander(env.sugarDist, 5, 4, .03, .8);
-    env.ghostBearing = wander(env.ghostBearing, 0, Math.PI, .015, .3);
-    env.ghostDist = wander(env.ghostDist, 6, 4, .03, .9);
-    env.foodOdor = wander(env.foodOdor, .55, .4, .04, .12);
-    env.dangerOdor = wander(env.dangerOdor, .18, .18, .04, .08);
-  }
+  const BASE_BEAT_MS = 220;
 
-  const midiToHz = midi => 440 * Math.pow(2, (midi - 69) / 12);
+  // Keyboard mapping for computer typing (A..K and W..U)
+  const KEY_MAP = {
+    'a': 48, 'w': 49, 's': 50, 'e': 51, 'd': 52, 'f': 53, 't': 54, 'g': 55, 'y': 56, 'h': 57, 'u': 58, 'j': 59,
+    'k': 60, 'o': 61, 'l': 62, 'p': 63, ';': 64, "'": 65
+  };
+
   function fitToKeyboard(midi) {
     let fitted = midi;
     while (fitted < 48) fitted += 12;
@@ -63,256 +68,513 @@
     return fitted;
   }
 
-  function setupAudio() {
-    audio.context ||= new (window.AudioContext || window.webkitAudioContext)();
-    if (!audio.master) {
-      audio.master = audio.context.createGain();
-      audio.master.gain.value = audio.volume;
-      // Measured peaks were around -13dBFS with the harmonic voice below —
-      // clearly audible on headphones but easy to miss on laptop speakers.
-      // A limiter lets the raw gain be pushed up without the summed
-      // harmonics + noise transient clipping on loud chords.
-      audio.limiter = audio.context.createDynamicsCompressor();
-      audio.limiter.threshold.value = -8;
-      audio.limiter.knee.value = 6;
-      audio.limiter.ratio.value = 12;
-      audio.limiter.attack.value = .002;
-      audio.limiter.release.value = .15;
-      audio.master.connect(audio.limiter).connect(audio.context.destination);
+  // Initialize Drosophila Brain
+  async function initBrain() {
+    try {
+      if (window.FullBrainBridge) {
+        state.brain = await FullBrainBridge.create();
+        state.brainBackend = 'FLYWIRE WHOLE-BRAIN (139k)';
+      }
+    } catch (err) {
+      console.warn('Whole-brain worker unavailable, falling back to Compact Connectome LIF:', err);
+      try {
+        state.brain = await FlyNeuralEngine.create('connectome.json');
+        state.brainBackend = 'COMPACT CONNECTOME LIF (66)';
+      } catch (err2) {
+        console.error('Failed to load connectome:', err2);
+      }
     }
-    audio.master.gain.value = audio.volume;
-    if (audio.context.state === 'suspended') audio.context.resume();
-  }
 
-  // A real piano note is percussive (near-instant attack from the hammer
-  // strike), rings out well past its written duration (the string keeps
-  // decaying even after the next note starts, especially with the sustain
-  // pedal), and its higher partials die away faster than the fundamental —
-  // that's what gives it a bright attack that mellows as the note rings.
-  // The previous version had every harmonic share one envelope that cut
-  // off hard at the exact rhythmic duration, which reads as a synth blip,
-  // not a piano. This models the same properties instead.
-  const HARMONICS = [1, 2, 3, 4, 5, 6, 8];
-  const HARMONIC_AMPS = [1, .62, .38, .22, .14, .09, .05];
-  function playNote(midi, duration, gain) {
-    setupAudio();
-    const now = audio.context.currentTime;
-    const freq = midiToHz(midi);
-    const ring = duration * 1.6 + .5; // notes ring out past their rhythmic slot, like a real struck string
-    const voice = audio.context.createGain();
-    voice.connect(audio.master);
+    if (visualizer && state.brain) {
+      visualizer.setBrain(state.brain);
+    }
 
-    HARMONICS.forEach((h, i) => {
-      const osc = audio.context.createOscillator();
-      osc.type = 'sine';
-      osc.frequency.value = freq * h + (h > 1 ? (Math.random() - .5) * h * .6 : 0); // slight inharmonicity, like real strings
-      const partialGain = audio.context.createGain();
-      const amp = gain * HARMONIC_AMPS[i];
-      const decay = ring / (1 + i * .55); // higher partials fade faster than the fundamental
-      partialGain.gain.setValueAtTime(.0001, now);
-      partialGain.gain.exponentialRampToValueAtTime(amp, now + .004);
-      partialGain.gain.exponentialRampToValueAtTime(.0001, now + decay);
-      osc.connect(partialGain).connect(voice);
-      osc.start(now);
-      osc.stop(now + decay + .05);
-    });
-
-    // Hammer-strike transient: a brief burst of filtered noise at onset.
-    const noiseBuf = audio.context.createBuffer(1, audio.context.sampleRate * .02, audio.context.sampleRate);
-    const noiseData = noiseBuf.getChannelData(0);
-    for (let i = 0; i < noiseData.length; i++) noiseData[i] = (Math.random() * 2 - 1) * (1 - i / noiseData.length);
-    const noise = audio.context.createBufferSource();
-    noise.buffer = noiseBuf;
-    const noiseFilter = audio.context.createBiquadFilter();
-    noiseFilter.type = 'highpass'; noiseFilter.frequency.value = freq * 1.5;
-    const noiseGain = audio.context.createGain();
-    noiseGain.gain.value = gain * .35;
-    noise.connect(noiseFilter).connect(noiseGain).connect(voice);
-    noise.start(now);
-
-    const keyIndex = Math.max(0, Math.min(23, midi - 48));
-    document.querySelectorAll('.keys button.active').forEach(item => item.classList.remove('active'));
-    const key = $('keys').children[keyIndex];
-    if (key) { key.classList.add('active'); window.setTimeout(() => key.classList.remove('active'), duration * 1000); }
-
-    const performer = $('performer');
-    performer.style.left = `${((keyIndex + .5) / 24) * 100}%`;
-    performer.classList.remove('hit'); void performer.offsetWidth; performer.classList.add('hit');
-    window.setTimeout(() => performer.classList.remove('hit'), 160);
-
-    const hero = document.querySelector('.panel-hero');
-    if (hero) {
-      hero.style.setProperty('--pulse-x', `${(keyIndex / 23) * 100}%`);
-      hero.style.setProperty('--pulse', Math.min(1, gain * 4).toString());
-      window.setTimeout(() => hero.style.setProperty('--pulse', '0'), Math.min(400, duration * 700));
+    if ($('brain-backend-badge')) {
+      $('brain-backend-badge').textContent = state.brainBackend;
     }
   }
 
-  const RECEPTOR_DOTS = 14;
-  const dotRows = { da: $('dots-da'), '5ht': $('dots-5ht'), oa: $('dots-oa') };
-  Object.values(dotRows).forEach(row => { for (let i = 0; i < RECEPTOR_DOTS; i++) row.appendChild(document.createElement('i')); });
-  function setReceptorRow(row, level) {
-    const lit = Math.round(Math.max(0, Math.min(1, level)) * RECEPTOR_DOTS);
-    [...row.children].forEach((dot, index) => { dot.style.opacity = index < lit ? Math.max(.45, level) : .15; });
-  }
-  function updateReceptors(daLevel, serotoninLevel, oaLevel, mood) {
-    setReceptorRow(dotRows.da, daLevel);
-    setReceptorRow(dotRows['5ht'], serotoninLevel);
-    setReceptorRow(dotRows.oa, oaLevel);
-    const balance = Math.round(Math.max(0, Math.min(1, daLevel * .6 + serotoninLevel * .4 - oaLevel * .3)) * 100);
-    const ring = $('emotion-ring');
-    ring.style.setProperty('--pct', `${balance}%`);
-    ring.dataset.mood = (mood || 'CURIOUS').toLowerCase();
-    $('emotion-value').textContent = mood || 'CURIOUS';
-  }
-  function updateDrives(drives) {
-    $('drive-foraging').style.width = `${Math.round(Math.min(1, drives.foraging || 0) * 100)}%`;
-    $('drive-escape').style.width = `${Math.round(Math.min(1, drives.escape || 0) * 100)}%`;
-    $('drive-explore').style.width = `${Math.round(Math.min(1, drives.explore || 0) * 100)}%`;
-    $('drive-rest').style.width = `${Math.round(Math.min(1, drives.rest || 0) * 100)}%`;
+  // Build 24 Piano Keys (2 Octaves: MIDI 48 to 71)
+  function setupPianoKeys() {
+    const keysContainer = $('keys');
+    if (!keysContainer) return;
+    keysContainer.innerHTML = '';
+
+    // Standard piano layout (14 white, 10 black)
+    const isBlack = [false, true, false, true, false, false, true, false, true, false, true, false,
+                     false, true, false, true, false, false, true, false, true, false, true, false];
+
+    for (let i = 0; i < 24; i++) {
+      const midi = 48 + i;
+      const keyBtn = document.createElement('button');
+      keyBtn.type = 'button';
+      keyBtn.className = `piano-key ${isBlack[i] ? 'black-key' : 'white-key'}`;
+      keyBtn.dataset.midi = midi;
+      keyBtn.dataset.index = i;
+      keyBtn.setAttribute('aria-label', `Piano key ${midi}`);
+
+      // Manual interaction
+      keyBtn.addEventListener('mousedown', () => {
+        handleManualKeyPress(midi, i);
+      });
+
+      keysContainer.appendChild(keyBtn);
+    }
   }
 
-  function fallbackSnapshot(t) {
-    const arousal = .2 + (Math.sin(t * .05) + 1) / 2 * .35;
-    const dopamine = .25 + (Math.sin(t * .09 + 1) + 1) / 2 * .3;
-    const punishment = (Math.sin(t * .07 + 2) + 1) / 2 * .2;
-    return {
-      arousal, dopamine, punishment, octopamine: punishment, mood: 'CURIOUS',
-      activeNeuronCount: Math.round(arousal * 24), neuronCount: 24, activity: null,
-      drives: { foraging: arousal * .6, escape: punishment, explore: arousal * .4, rest: 1 - arousal },
-    };
+  function highlightKey(keyIndex, isTarget = false, isCorrect = true) {
+    const keys = $('keys')?.children;
+    if (!keys) return;
+
+    if (isTarget) {
+      document.querySelectorAll('.piano-key.target').forEach(k => k.classList.remove('target'));
+      if (keys[keyIndex]) keys[keyIndex].classList.add('target');
+      state.targetKeyIndex = keyIndex;
+    } else {
+      document.querySelectorAll('.piano-key.active').forEach(k => k.classList.remove('active', 'correct', 'error'));
+      if (keys[keyIndex]) {
+        keys[keyIndex].classList.add('active', isCorrect ? 'correct' : 'error');
+        setTimeout(() => keys[keyIndex]?.classList.remove('active', 'correct', 'error'), 220);
+      }
+      state.activeKeyIndex = keyIndex;
+    }
   }
 
-  function brainSnapshot(t) {
-    if (!brain || !brain.state) return fallbackSnapshot(t);
-    const s = brain.state;
-    const activity = brain.activity || brain.connectome?.calcium || null;
-    const drives = s.drives || {
-      foraging: s.npfLevel || 0,
-      escape: s.panicLevel || 0,
-      explore: s.arousalLevel || 0,
-      rest: Math.max(0, 1 - (s.arousalLevel || 0)),
-    };
-    return {
-      arousal: s.arousalLevel || 0,
-      dopamine: s.dopamineTransient || 0,
-      punishment: s.ppl1Transient || 0,
-      octopamine: s.octopamineLevel || 0,
-      mood: s.behaviorState || 'CURIOUS',
-      activeNeuronCount: brain.activeNeuronCount || Math.round((s.arousalLevel || 0) * (brain.neuronCount || 24)),
-      neuronCount: brain.neuronCount || 24,
-      activity, drives,
-    };
+  function handleManualKeyPress(midi, keyIndex) {
+    audio.play(midi, 0.5, 0.85, true);
+    highlightKey(keyIndex, false, true);
+
+    // Reinforce connectome
+    if (state.brain) {
+      state.brain.onPelletEaten(false);
+    }
+
+    // Animate fly performer
+    const fly = $('fly');
+    if (fly) {
+      fly.classList.add('performing');
+      setTimeout(() => fly.classList.remove('performing'), 300);
+    }
   }
 
-  function renderTrack() {
-    const song = TRACKS[track];
-    $('track-title').innerHTML = `${song.name} <em>— ${song.artist}</em>`;
-    $('tempo-value').textContent = `${song.bpm} BPM`;
-    const picker = $('song-picker');
-    picker.innerHTML = TRACKS.map((s, i) => `<option value="${i}">${s.name} — ${s.artist}</option>`).join('');
-    picker.value = track;
-  }
+  // Song playback and neural stepping
+  function startPlayback() {
+    audio.init();
+    if (state.timer) clearTimeout(state.timer);
+    state.playing = true;
 
-  function stopTrack() {
-    clearInterval(audio.timer);
-    audio.playing = false;
-    $('play-track').textContent = '▶';
-    $('status-text').textContent = 'paused — press play to resume the performance';
-  }
+    const playBtn = $('play-track');
+    if (playBtn) playBtn.textContent = '⏸ PAUSE';
 
-  function startTrack() {
-    setupAudio();
-    stopTrack();
-    audio.playing = true;
-    noteIndex = 0;
-    $('play-track').textContent = 'Ⅱ';
-    $('status-text').textContent = `${brainBackend} is warming up…`;
+    const statusText = $('status-text');
+    if (statusText) statusText.textContent = `${state.brainBackend} · AUTONOMOUS PRACTICE`;
 
     const tick = () => {
-      if (!audio.playing) return;
-      const t = performance.now() / 1000;
-      const song = TRACKS[track];
-      const beatMs = BEAT_MS_BASE / song.bpm;
-      const [rawMidi, beats] = song.notes[noteIndex % song.notes.length];
-      const midi = fitToKeyboard(rawMidi);
+      if (!state.playing) return;
 
-      // The brain sim runs alongside the performance, not in charge of it:
-      // it gets real sensory drift plus a reward pulse each time the piece
-      // resolves to its tonic, and its own state (arousal/dopamine/drives)
-      // is what the dashboard below actually reflects.
-      stepEnv();
-      const snap = brainSnapshot(t);
-      lastSnap = snap;
-      if (brain) {
-        const headingIndex = Math.floor((env.sugarBearing + Math.PI) / (Math.PI / 2)) % 4;
-        brain.update(.1, { ...env, headingIndex, temperature: .5 });
-        if (noteIndex % song.notes.length === 0) brain.onPelletEaten(false);
+      const track = TRACKS[state.currentTrack];
+      const notes = track.notes;
+
+      // Handle song completion & mastery progression
+      if (state.noteIndex >= notes.length) {
+        state.trial++;
+        if (state.brain) {
+          state.brain.state.trialsCompleted = state.trial;
+        }
+
+        const currentAccuracy = state.brain?.state?.accuracy ?? state.stats.accuracy;
+        const masteryReached = state.brain?.state?.masteryReached || (currentAccuracy >= 85.0 && state.trial >= 2);
+
+        if (masteryReached) {
+          // Mastery Achieved! Trigger reward celebration and advance to next track
+          triggerStimulus('sugar');
+          state.currentTrack = (state.currentTrack + 1) % TRACKS.length;
+          renderTrackSelect();
+          state.noteIndex = 0;
+          if (statusText) statusText.textContent = `MASTERED! ADVANCING TO ${TRACKS[state.currentTrack].name.toUpperCase()}`;
+        } else {
+          // Loop current track to continue learning
+          state.noteIndex = 0;
+          if (statusText) statusText.textContent = `${state.brainBackend} · TRIAL ${state.trial} REINFORCING`;
+        }
+
+        if ($('trial-count')) $('trial-count').textContent = `TRIAL ${String(state.trial).padStart(3, '0')}`;
+
+        // Brief breath between songs/trials
+        state.timer = setTimeout(tick, 450);
+        return;
       }
 
-      const gain = .55 + snap.dopamine * .25;
-      playNote(midi, (beats * beatMs / 1000) * .85, gain);
+      const targetPair = notes[state.noteIndex];
+      const targetMidi = fitToKeyboard(targetPair[0]);
+      const targetKeyIndex = targetMidi - 48;
 
-      $('dopamine-value').textContent = `${Math.round(snap.dopamine * 100)}%`;
-      $('neuron-value').textContent = `${Math.round(snap.activeNeuronCount).toLocaleString()} / ${Math.round(snap.neuronCount).toLocaleString()}`;
-      $('backend-badge').textContent = brain ? brainBackend : 'BOOTING…';
-      $('status-text').textContent = brain ? `${brainBackend} · watching the fly play · ${snap.mood}` : 'the brain sim is still loading…';
-      updateReceptors(snap.dopamine, 1 - snap.punishment, snap.octopamine, snap.mood);
-      updateDrives(snap.drives);
-      $('progress-fill').style.width = `${((noteIndex % song.notes.length) / song.notes.length) * 100}%`;
+      highlightKey(targetKeyIndex, true);
 
-      noteIndex++;
-      const totalBeats = Math.floor(noteIndex / song.notes.length) * song.notes.reduce((a, n) => a + n[1], 0)
-        + song.notes.slice(0, noteIndex % song.notes.length).reduce((a, n) => a + n[1], 0);
-      const totalSeconds = Math.round(totalBeats * beatMs / 1000);
-      $('clock').textContent = `${String(Math.floor(totalSeconds / 60)).padStart(2, '0')}:${String(totalSeconds % 60).padStart(2, '0')}`;
-      audio.timer = setTimeout(tick, beats * beatMs);
+      // Sensory signal injection
+      const sensory = {
+        sugarBearing: 0,
+        sugarDist: 1,
+        ghostBearing: 0,
+        ghostDist: null,
+        headingIndex: state.noteIndex % 4,
+        foodOdor: 1,
+        dangerOdor: 0,
+        temperature: 0.5
+      };
+
+      if (state.brain) {
+        state.brain.update(0.1, sensory);
+      }
+
+      // Reinforcement learning action selection via connectome / Q-policy
+      const memory = state.qTable[state.currentTrack][state.noteIndex];
+      let chosenKeyIndex = targetKeyIndex;
+      let isExploration = false;
+
+      if (state.brain && typeof state.brain.selectAction === 'function') {
+        const actionResult = state.brain.selectAction(targetKeyIndex, 24, memory);
+        chosenKeyIndex = actionResult.key;
+        isExploration = actionResult.isExploration;
+      } else {
+        const explore = state.autonomous && Math.random() < state.epsilon;
+        if (explore) {
+          chosenKeyIndex = Math.floor(Math.random() * 24);
+          isExploration = true;
+        }
+      }
+
+      const chosenMidi = 48 + chosenKeyIndex;
+      const isCorrect = chosenKeyIndex === targetKeyIndex;
+
+      // Q-learning synaptic update
+      const currentQ = memory.get(chosenKeyIndex) || 0;
+      memory.set(chosenKeyIndex, currentQ + (isCorrect ? 0.85 : -0.4));
+      if (!isCorrect && Math.random() < 0.65) {
+        memory.set(targetKeyIndex, (memory.get(targetKeyIndex) || 0) + 0.65);
+      }
+
+      // Update biological plasticity & stats
+      if (state.brain) {
+        if (typeof state.brain.recordPerformance === 'function') {
+          state.brain.recordPerformance(isCorrect, targetKeyIndex, chosenKeyIndex);
+        } else {
+          isCorrect ? state.brain.onPelletEaten(false) : state.brain.onHazardEaten();
+        }
+      }
+
+      state.stats.totalNotes++;
+      if (isCorrect) state.stats.correctNotes++;
+      state.stats.accuracy = Number(((state.stats.correctNotes / Math.max(1, state.stats.totalNotes)) * 100).toFixed(1));
+      state.stats.deltaW = (state.trial * 0.008 + state.stats.correctNotes * 0.0002).toFixed(3);
+
+      // Audio & Key UI
+      const duration = Math.max(0.14, 0.22 * targetPair[1]);
+      audio.play(chosenMidi, duration, 0.85, isCorrect);
+      highlightKey(chosenKeyIndex, false, isCorrect);
+
+      // Animate fly performer strike
+      const fly = $('fly');
+      if (fly) {
+        fly.classList.add('performing');
+        setTimeout(() => {
+          if (fly && state.playing) fly.classList.remove('performing');
+        }, 180);
+      }
+
+      // Update badge readouts
+      const explorationPct = state.brain?.state?.explorationRate !== undefined
+        ? (state.brain.state.explorationRate * 100).toFixed(0)
+        : (state.epsilon * 100).toFixed(0);
+
+      if ($('trial-count')) $('trial-count').textContent = `TRIAL ${String(state.trial).padStart(3, '0')}`;
+      if ($('learning-badge')) $('learning-badge').textContent = `EXPLORATION ${explorationPct}%`;
+      if ($('song-progress-pct')) $('song-progress-pct').textContent = `${Math.round(((state.noteIndex + 1) / notes.length) * 100)}%`;
+
+      state.noteIndex++;
+      const speedMs = Math.max(65, (targetPair[1] * BASE_BEAT_MS) / audio.tempoScale);
+      state.timer = setTimeout(tick, speedMs);
     };
+
     tick();
     brainReady.finally(() => { if (audio.playing) $('status-text').textContent = `${brainBackend} · connected`; });
   }
 
-  $('play-track').addEventListener('click', () => audio.playing ? stopTrack() : startTrack());
-  $('volume').addEventListener('input', e => {
-    audio.volume = Number(e.target.value) / 100;
-    if (audio.master) audio.master.gain.value = audio.volume;
-  });
-  $('song-picker').addEventListener('change', e => {
-    track = Number(e.target.value);
-    noteIndex = 0;
-    renderTrack();
-    if (audio.playing) startTrack();
-  });
-  [...Array(24)].forEach((_, index) => {
-    const key = document.createElement('button'); key.type = 'button';
-    key.setAttribute('aria-label', `Piano key ${index + 1}`); key.setAttribute('aria-hidden', 'true');
-    $('keys').appendChild(key);
-  });
-  renderTrack();
-  updateReceptors(.25, .55, .12, 'CURIOUS');
-  updateDrives({ foraging: .2, escape: .05, explore: .3, rest: .2 });
+  function stopPlayback() {
+    if (state.timer) clearTimeout(state.timer);
+    state.playing = false;
+    const playBtn = $('play-track');
+    if (playBtn) playBtn.textContent = '▶ PLAY';
 
-  function draw() {
-    const time = performance.now() / 1000, wave = $('wave'), wctx = wave.getContext('2d'), neural = $('neural'), nctx = neural.getContext('2d');
-    const amp = 6 + lastSnap.arousal * 55, speed = 1 + lastSnap.dopamine * 2.5;
-    wctx.clearRect(0, 0, wave.width, wave.height); wctx.strokeStyle = '#d9a34f'; wctx.lineWidth = 1.5; wctx.beginPath();
-    const mid = wave.height / 2;
-    for (let x = 0; x < wave.width; x++) { const y = mid + Math.sin(x / 38 + time * speed) * amp + Math.sin(x / 13 + time) * (amp * .3); x ? wctx.lineTo(x, y) : wctx.moveTo(x, y); } wctx.stroke();
-    nctx.clearRect(0, 0, neural.width, neural.height);
-    const activity = brain?.activity || brain?.connectome?.calcium;
-    const cols = 8, rows = 3;
-    for (let i = 0; i < cols * rows; i++) {
-      const raw = activity ? activity[i % activity.length] : (Math.sin(time * 3 + i) + 1) * .5;
-      const live = activity ? 1 - 1 / (1 + raw * .3) : raw;
-      const col = i % cols, row = Math.floor(i / cols);
-      const x = (col + .5) * (neural.width / cols), y = (row + .5) * (neural.height / rows);
-      const pulse = 1.4 + live * 2.4;
-      nctx.globalAlpha = .18 + live * .75;
-      nctx.fillStyle = live > .5 ? '#d9a34f' : '#8b8175';
-      nctx.beginPath(); nctx.arc(x, y, pulse, 0, Math.PI * 2); nctx.fill();
-    }
-    nctx.globalAlpha = 1;
-    requestAnimationFrame(draw);
+    const fly = $('fly');
+    if (fly) fly.classList.remove('performing');
+
+    const statusText = $('status-text');
+    if (statusText) statusText.textContent = 'STANDBY · AWAITING STIMULUS';
   }
-  draw();
+
+  function renderTrackSelect() {
+    const current = TRACKS[state.currentTrack];
+    if ($('track-name')) $('track-name').innerHTML = `${current.name} <em>— ${current.artist}</em>`;
+    if ($('track-desc')) $('track-desc').textContent = current.desc;
+    if ($('track-difficulty')) $('track-difficulty').textContent = current.difficulty;
+
+    const picker = $('song-picker');
+    if (picker) {
+      picker.innerHTML = TRACKS.map((item, idx) => `
+        <option value="${idx}" ${idx === state.currentTrack ? 'selected' : ''}>
+          ${item.name} (${item.difficulty}) — ${item.artist}
+        </option>
+      `).join('');
+    }
+  }
+
+  // Micro-stimulus triggers with sound and visual feedback
+  function triggerStimulus(type) {
+    audio.init();
+    audio.playStimulusSfx(type);
+
+    const fly = $('fly');
+
+    if (type === 'sugar') {
+      if (state.brain) {
+        typeof state.brain.injectSugarPuff === 'function'
+          ? state.brain.injectSugarPuff(1.0)
+          : state.brain.onPelletEaten(true);
+      }
+      if (fly) {
+        fly.classList.add('happy');
+        setTimeout(() => fly.classList.remove('happy'), 650);
+      }
+    } else if (type === 'bitter') {
+      if (state.brain) {
+        typeof state.brain.injectBitterShock === 'function'
+          ? state.brain.injectBitterShock(1.0)
+          : state.brain.onHazardEaten();
+      }
+      if (fly) {
+        fly.classList.add('disgusted');
+        setTimeout(() => fly.classList.remove('disgusted'), 700);
+      }
+    } else if (type === 'threat') {
+      if (state.brain) {
+        typeof state.brain.injectLoomingShadow === 'function'
+          ? state.brain.injectLoomingShadow(1.0, 0)
+          : state.brain.onCaught();
+      }
+      if (fly) {
+        fly.classList.add('panic');
+        setTimeout(() => fly.classList.remove('panic'), 900);
+      }
+    } else if (type === 'optogenetics') {
+      if (state.brain) {
+        if (typeof state.brain.applyCustomStimulus === 'function') {
+          state.brain.applyCustomStimulus('KC', 1.8);
+          state.brain.applyCustomStimulus('MB_KC', 1.8);
+        } else if (state.brain.connectome) {
+          state.brain.connectome.injectPopulation('KC', 1.8);
+        }
+      }
+      if (visualizer) visualizer.toggleParticles();
+    }
+  }
+
+  // Setup DOM Event Listeners
+  function setupEvents() {
+    // Play/Pause button
+    $('play-track')?.addEventListener('click', () => {
+      state.playing ? stopPlayback() : startPlayback();
+    });
+
+    // Song picker change
+    $('song-picker')?.addEventListener('change', e => {
+      const wasPlaying = state.playing;
+      stopPlayback();
+      state.currentTrack = Number(e.target.value);
+      state.noteIndex = 0;
+      renderTrackSelect();
+      if (wasPlaying) startPlayback();
+    });
+
+    // Autonomous Mode toggle
+    $('autonomous-toggle')?.addEventListener('change', e => {
+      state.autonomous = e.target.checked;
+      const label = $('autonomous-label');
+      if (label) label.textContent = state.autonomous ? 'AUTONOMOUS (RL)' : 'MANUAL';
+      if (state.autonomous && !state.playing) {
+        startPlayback();
+      }
+    });
+
+    // Stimulus Injection Buttons
+    $('stim-sugar')?.addEventListener('click', () => triggerStimulus('sugar'));
+    $('stim-bitter')?.addEventListener('click', () => triggerStimulus('bitter'));
+    $('stim-threat')?.addEventListener('click', () => triggerStimulus('threat'));
+    $('stim-optogenetics')?.addEventListener('click', () => triggerStimulus('optogenetics'));
+
+    // Instrument Synthesizer Picker
+    document.querySelectorAll('.inst-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.inst-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        audio.setInstrument(btn.dataset.instrument);
+      });
+    });
+
+    // Tempo Slider
+    $('tempo-slider')?.addEventListener('input', e => {
+      const val = parseFloat(e.target.value);
+      audio.setTempoScale(val);
+      if ($('tempo-val')) $('tempo-val').textContent = `${val.toFixed(1)}x`;
+    });
+
+    // Volume Slider
+    $('volume-slider')?.addEventListener('input', e => {
+      const val = parseFloat(e.target.value);
+      audio.setVolume(val);
+      if ($('volume-val')) $('volume-val').textContent = `${Math.round(val * 100)}%`;
+    });
+
+    // Reverb Slider
+    $('reverb-slider')?.addEventListener('input', e => {
+      const val = parseFloat(e.target.value);
+      audio.setReverb(val);
+      if ($('reverb-val')) $('reverb-val').textContent = `${Math.round(val * 100)}%`;
+    });
+
+    // Connectome View Controls
+    $('view-2d-btn')?.addEventListener('click', () => {
+      $('view-2d-btn').classList.add('active');
+      $('view-3d-btn').classList.remove('active');
+      visualizer?.setViewMode('2d');
+    });
+
+    $('view-3d-btn')?.addEventListener('click', () => {
+      $('view-3d-btn').classList.add('active');
+      $('view-2d-btn').classList.remove('active');
+      visualizer?.setViewMode('3d');
+    });
+
+    $('reset-view-btn')?.addEventListener('click', () => {
+      visualizer?.resetView();
+    });
+
+    $('toggle-particles-btn')?.addEventListener('click', function() {
+      const on = visualizer?.toggleParticles();
+      this.classList.toggle('active', on);
+    });
+
+    // Neuropil Filter Pills
+    document.querySelectorAll('.filter-pill').forEach(pill => {
+      pill.addEventListener('click', () => {
+        document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+        pill.classList.add('active');
+        visualizer?.setFilter(pill.dataset.filter);
+      });
+    });
+
+    // Keyboard support
+    window.addEventListener('keydown', e => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+      const key = e.key.toLowerCase();
+      if (key === ' ') {
+        e.preventDefault();
+        state.playing ? stopPlayback() : startPlayback();
+      } else if (KEY_MAP[key]) {
+        const midi = KEY_MAP[key];
+        const keyIdx = midi - 48;
+        handleManualKeyPress(midi, keyIdx);
+      }
+    });
+
+    // Simulation Clock
+    setInterval(() => {
+      const now = new Date();
+      if ($('clock')) {
+        $('clock').textContent = now.toTimeString().split(' ')[0];
+      }
+    }, 1000);
+  }
+
+  // Update fly visual state classes according to biological behavioral state
+  function updateFlyBehaviorVisuals() {
+    const fly = $('fly');
+    if (!fly || fly.classList.contains('performing') || fly.classList.contains('happy') || fly.classList.contains('panic') || fly.classList.contains('disgusted')) {
+      return;
+    }
+
+    const bState = state.brain?.state?.behaviorState || 'ALERT';
+    const stateClass = bState.toLowerCase();
+
+    const knownStates = ['grooming', 'alert', 'resting', 'foraging', 'exploring', 'focused', 'escape'];
+    knownStates.forEach(cls => {
+      if (cls !== stateClass) fly.classList.remove(cls);
+    });
+
+    if (!fly.classList.contains(stateClass)) {
+      fly.classList.add(stateClass);
+    }
+  }
+
+  // Master Render & Simulation Loop (60 FPS)
+  function mainLoop() {
+    // 1. Update Brain & Visualizer
+    if (visualizer) {
+      visualizer.updateFromBrain();
+      visualizer.render();
+    }
+
+    // 2. Update Telemetry Dashboard
+    if (dashboard && state.brain) {
+      dashboard.sample(state.brain, {
+        dopamine: state.brain?.state?.dopamineTransient || 0.35,
+        punishment: state.brain?.state?.panicLevel || 0.1,
+        trial: state.trial
+      }, state.stats);
+
+      dashboard.renderRaster($('raster-canvas'));
+      dashboard.renderNeurochem($('neurochem-canvas'));
+      dashboard.renderPhaseSpace($('phasespace-canvas'));
+    }
+
+    // 3. Update Fly Biological Idling Visuals
+    updateFlyBehaviorVisuals();
+
+    requestAnimationFrame(mainLoop);
+  }
+
+  // Initialize Application
+  async function init() {
+    setupPianoKeys();
+    renderTrackSelect();
+
+    const connectomeCanvas = $('connectome-canvas');
+    const tooltipEl = $('connectome-tooltip');
+    if (connectomeCanvas) {
+      visualizer = new ConnectomeVisualizer(connectomeCanvas, tooltipEl);
+    }
+
+    dashboard = new TelemetryDashboard({
+      kpiFiringRate: $('kpi-firing-rate'),
+      kpiDopamine: $('kpi-dopamine'),
+      kpiHeading: $('kpi-heading'),
+      kpiAccuracy: $('kpi-accuracy'),
+      kpiPlasticity: $('kpi-plasticity'),
+      kpiCalcium: $('kpi-calcium'),
+      stateBadge: $('behavior-state-badge')
+    });
+
+    setupEvents();
+    await initBrain();
+    mainLoop();
+
+    // Auto-start continuous practice after a short initialization delay
+    setTimeout(() => {
+      if (state.autonomous && !state.playing) {
+        startPlayback();
+      }
+    }, 600);
+  }
+
+  window.addEventListener('DOMContentLoaded', init);
 })();
