@@ -297,6 +297,7 @@
     };
 
     tick();
+    brainReady.finally(() => { if (audio.playing) $('status-text').textContent = `${brainBackend} · connected`; });
   }
 
   function stopPlayback() {
