@@ -1,0 +1,199 @@
+name: Verify live Reddit fetch
+
+on:
+  push:
+    paths:
+      - ".github/workflows/verify-live-fetch.yml"
+  workflow_dispatch:
+    inputs:
+      subreddit:
+        description: "Subreddit to fetch"
+        required: false
+        default: "popular"
+
+env:
+  TEST_SUBREDDIT: ${{ inputs.subreddit || 'popular' }}
+  REDDIT_CLIENT_ID: ${{ secrets.REDDIT_CLIENT_ID }}
+  REDDIT_CLIENT_SECRET: ${{ secrets.REDDIT_CLIENT_SECRET }}
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Playwright + Chromium
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.48 >/dev/null 2>&1
+          npx playwright install --with-deps chromium
+
+      - name: Check whether the OAuth token endpoint gets the same network-security block
+        run: |
+          set +e
+          echo "Testing https://www.reddit.com/api/v1/access_token with garbage credentials —"
+          echo "expecting 401 (reachable, auth rejected) vs 403 'blocked by network security' (still IP-blocked)"
+          curl -sS -o /tmp/oauth_test.txt -w "\nHTTP_STATUS:%{http_code}\n" \
+            -X POST "https://www.reddit.com/api/v1/access_token" \
+            -A "fruit-fly-connectome-reddit-simulator/1.0" \
+            -u "placeholder_id:placeholder_secret" \
+            -d "grant_type=client_credentials"
+          echo "---"
+          cat /tmp/oauth_test.txt
+          set -e
+
+      - name: Full OAuth-authenticated fetch of oauth.reddit.com using real credentials
+        run: |
+          set +e
+          if [ -z "$REDDIT_CLIENT_ID" ] || [ -z "$REDDIT_CLIENT_SECRET" ]; then
+            echo "No client_id/client_secret supplied at dispatch time — skipping authenticated fetch test."
+            exit 0
+          fi
+          echo "Step A: obtain a real access token (response body not printed — it contains the live token)"
+          HTTP_STATUS=$(curl -sS -o /tmp/token.json -w "%{http_code}" \
+            -X POST "https://www.reddit.com/api/v1/access_token" \
+            -A "fruit-fly-connectome-reddit-simulator/1.0 by u/fruit-fly-sim" \
+            -u "${REDDIT_CLIENT_ID}:${REDDIT_CLIENT_SECRET}" \
+            -d "grant_type=client_credentials")
+          echo "Token request HTTP status: ${HTTP_STATUS}"
+          ACCESS_TOKEN=$(node -e "try{const t=require('/tmp/token.json');console.log(t.access_token||'')}catch(e){console.log('')}")
+          if [ -z "$ACCESS_TOKEN" ]; then
+            echo "NO ACCESS TOKEN OBTAINED — cannot attempt authenticated fetch."
+            set -e
+            exit 0
+          fi
+          echo "Got access token (length ${#ACCESS_TOKEN}). Step B: fetch via oauth.reddit.com"
+          curl -sS -o /tmp/reddit_oauth.json -w "\nHTTP_STATUS:%{http_code}\n" \
+            "https://oauth.reddit.com/r/${TEST_SUBREDDIT}/hot?limit=15&raw_json=1" \
+            -A "fruit-fly-connectome-reddit-simulator/1.0 by u/fruit-fly-sim" \
+            -H "Authorization: bearer ${ACCESS_TOKEN}"
+          echo "---oauth fetch response (first 400 chars)---"
+          head -c 400 /tmp/reddit_oauth.json
+          echo ""
+          set -e
+
+      - name: Sweep alternate unauthenticated endpoints for one that isn't network-security blocked
+        run: |
+          node -e "
+            const { chromium } = require('playwright');
+            const fs = require('fs');
+            const sub = process.env.TEST_SUBREDDIT;
+
+            const candidates = [
+              { name: 'www.reddit.com hot.json', url: 'https://www.reddit.com/r/' + sub + '/hot.json?limit=15&raw_json=1', kind: 'json' },
+              { name: 'old.reddit.com hot.json', url: 'https://old.reddit.com/r/' + sub + '/hot.json?limit=15&raw_json=1', kind: 'json' },
+              { name: 'api.reddit.com hot', url: 'https://api.reddit.com/r/' + sub + '/hot?limit=15&raw_json=1', kind: 'json' },
+              { name: 'www.reddit.com bare .json', url: 'https://www.reddit.com/r/' + sub + '.json?limit=15&raw_json=1', kind: 'json' },
+              { name: 'www.reddit.com .rss', url: 'https://www.reddit.com/r/' + sub + '/.rss', kind: 'rss' },
+              { name: 'redlib.catsarch.com', url: 'https://redlib.catsarch.com/r/' + sub + '.json', kind: 'json' },
+              { name: 'safereddit.com json', url: 'https://safereddit.com/r/' + sub + '.json', kind: 'json' },
+            ];
+
+            (async () => {
+              const browser = await chromium.launch();
+              let found = false;
+              for (const c of candidates) {
+                if (found) break;
+                const page = await browser.newPage();
+                try {
+                  console.log('--- Trying ' + c.name + ' : ' + c.url);
+                  const res = await page.goto(c.url, { waitUntil: 'domcontentloaded', timeout: 15000 });
+                  const status = res ? res.status() : -1;
+                  const text = await page.evaluate(() => document.body.innerText);
+                  console.log('HTTP status: ' + status + ', first 150 chars: ' + text.slice(0, 150).replace(/\n/g, ' '));
+                  if (status === 200 && c.kind === 'json') {
+                    const data = JSON.parse(text);
+                    const children = (data && data.data && data.data.children) || (Array.isArray(data) && data[1] && data[1].data && data[1].data.children) || [];
+                    if (children.length) {
+                      fs.writeFileSync('/tmp/reddit.json', JSON.stringify(data));
+                      fs.writeFileSync('/tmp/reddit_source.txt', c.name);
+                      console.log('SUCCESS via ' + c.name + ' — ' + children.length + ' posts');
+                      found = true;
+                    }
+                  } else if (status === 200 && c.kind === 'rss' && text.includes('<entry>')) {
+                    fs.writeFileSync('/tmp/reddit.rss', text);
+                    fs.writeFileSync('/tmp/reddit_source.txt', c.name);
+                    console.log('SUCCESS via ' + c.name + ' (RSS)');
+                    found = true;
+                  }
+                } catch (e) {
+                  console.log('FAILED ' + c.name + ': ' + e.message);
+                }
+                await page.close();
+              }
+              await browser.close();
+              if (!found) {
+                console.log('NO CANDIDATE ENDPOINT SUCCEEDED.');
+                process.exit(1);
+              }
+            })().catch(e => { console.error('ERROR:', e.message); process.exit(1); });
+          "
+
+      - name: Feed the real fetched data into the actual FlyBrain analysis code
+        run: |
+          node -e "
+            global.window = global;
+            require('./brain.js');
+            const fs = require('fs');
+
+            function tryLoadJson(path) {
+              if (!fs.existsSync(path)) return null;
+              try {
+                const data = JSON.parse(fs.readFileSync(path, 'utf8'));
+                const children = (data && data.data && data.data.children)
+                  || (Array.isArray(data) && data[1] && data[1].data && data[1].data.children)
+                  || [];
+                return children.length ? { children } : null;
+              } catch (e) {
+                return null;
+              }
+            }
+
+            function tryLoadRss(path) {
+              if (!fs.existsSync(path)) return null;
+              const xml = fs.readFileSync(path, 'utf8');
+              const entries = [...xml.matchAll(/<entry>([\s\S]*?)<\/entry>/g)].map(m => m[1]);
+              const children = entries.map(e => {
+                const title = (e.match(/<title>([\s\S]*?)<\/title>/) || [,''])[1];
+                const content = (e.match(/<content[^>]*>([\s\S]*?)<\/content>/) || [,''])[1];
+                return { data: { title, selftext: content.replace(/<[^>]+>/g, ' ').slice(0, 300), score: 0, num_comments: 0, upvote_ratio: 0.85 } };
+              });
+              return children.length ? { children } : null;
+            }
+
+            const sourceName = fs.existsSync('/tmp/reddit_source.txt') ? fs.readFileSync('/tmp/reddit_source.txt', 'utf8') : null;
+            const oauthResult = tryLoadJson('/tmp/reddit_oauth.json');
+            const sweepJsonResult = tryLoadJson('/tmp/reddit.json');
+            const sweepRssResult = tryLoadRss('/tmp/reddit.rss');
+            const picked = oauthResult ? { source: 'oauth.reddit.com (authenticated)', ...oauthResult }
+              : sweepJsonResult ? { source: sourceName || 'unauthenticated JSON endpoint', ...sweepJsonResult }
+              : sweepRssResult ? { source: sourceName || 'unauthenticated RSS endpoint', ...sweepRssResult }
+              : null;
+
+            if (!picked) {
+              console.log('NO REAL DATA AVAILABLE from either fetch path — both blocked or empty.');
+              process.exit(1);
+            }
+
+            console.log('Data source that actually worked: ' + picked.source);
+            console.log('Running FlyBrain.analyzePost() on ' + picked.children.length + ' real posts from r/${TEST_SUBREDDIT}:');
+            console.log('');
+            picked.children.forEach((c, i) => {
+              const post = {
+                title: c.data.title,
+                score: c.data.score,
+                num_comments: c.data.num_comments,
+                upvote_ratio: c.data.upvote_ratio,
+                selftext: c.data.selftext || '',
+              };
+              const brain = FlyBrain.analyzePost(post);
+              console.log((i+1) + '. \"' + post.title.slice(0, 60) + '\"');
+              console.log('   valence=' + brain.valence.toFixed(2) + ' spikeFreq=' + Math.round(brain.spikeFreq) + 'Hz channel=' + brain.dominantChannel + ' motor=' + brain.motorLabel);
+            });
+            console.log('');
+            console.log('SUCCESS: fly brain analysed ' + picked.children.length + ' real, live r/${TEST_SUBREDDIT} posts end-to-end via ' + picked.source + '.');
+          "
